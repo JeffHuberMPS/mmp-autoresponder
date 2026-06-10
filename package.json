@@ -1,0 +1,17 @@
+{
+  "name": "mmp-autoresponder",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "MMP Instagram autoresponder — always-on 24/7 webhook server",
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.101.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2"
+  }
+}

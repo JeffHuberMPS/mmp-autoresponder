@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>MMP · Instagram Control Center</title>
+<style>
+  /* ── Exact Jarvis dashboard palette (client/src/styles.css) ── */
+  :root{
+    --bg:#05070b; --text:#e9edf5; --muted:#8a93a6;
+    --blue:#3b82f6; --blue-bright:#6db8ff; --sky:#7ec8ff; --sky-bright:#a9dcff;
+    --green:#34d399; --amber:#f5b54a; --red:#f87171;
+    --card:#0f2148; --tile-border:#1f386c;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;min-height:100%}
+  body{
+    color:var(--text);
+    font:14.5px/1.55 'Segoe UI',system-ui,-apple-system,sans-serif;
+    /* identical Jarvis backdrop: faint grid + blue radial glows */
+    background:
+      linear-gradient(rgba(96,156,245,0.038) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(96,156,245,0.038) 1px, transparent 1px),
+      radial-gradient(1100px 650px at 74% -12%, rgba(60,110,200,0.24) 0%, rgba(5,7,11,0) 55%),
+      radial-gradient(820px 480px at 6% 2%, rgba(46,72,140,0.18) 0%, rgba(5,7,11,0) 52%),
+      linear-gradient(180deg,#0b0e15 0%,#05070b 100%);
+    background-size:46px 46px,46px 46px,auto,auto,auto;
+    background-attachment:fixed; padding:26px;
+  }
+  .wrap{max-width:1100px;margin:0 auto}
+
+  /* ── Jarvis glass panel (exact) ── */
+  .panel{
+    position:relative;isolation:isolate;border-radius:16px;padding:20px;
+    background:
+      linear-gradient(180deg, rgba(150,205,255,0.13) 0%, rgba(135,190,255,0.03) 12%, rgba(120,185,255,0) 22%),
+      linear-gradient(180deg,#1c2433 0%,#131a28 48%,#0d121d 100%);
+    border:1px solid rgba(120,170,245,0.21);
+    box-shadow:0 22px 48px rgba(0,0,0,0.6), 0 0 28px rgba(50,110,200,0.10),
+      inset 0 1px 0 rgba(185,220,255,0.32), inset 0 -1px 0 rgba(0,0,0,0.45);
+    transition:box-shadow .3s cubic-bezier(.2,.8,.2,1), border-color .3s, transform .3s}
+  .panel::before{content:'';position:absolute;inset:0;border-radius:16px;z-index:-1;pointer-events:none;
+    background:linear-gradient(118deg, rgba(165,210,255,0.11) 0%, rgba(150,200,255,0) 28%, rgba(120,180,255,0) 66%, rgba(100,170,255,0.07) 100%)}
+  .panel::after{content:'';position:absolute;left:10px;right:10px;top:0;height:1px;pointer-events:none;
+    background:linear-gradient(90deg, transparent, rgba(200,228,255,0.7), transparent)}
+  .panel:hover{border-color:rgba(120,175,255,0.4);
+    box-shadow:0 28px 60px rgba(0,0,0,0.7), 0 0 42px rgba(50,110,210,0.20), inset 0 1px 0 rgba(170,210,255,0.38), inset 0 -1px 0 rgba(0,0,0,0.5)}
+
+  /* ── single header card: ONE emblem (the only brand element) ── */
+  .head{display:flex;align-items:center;justify-content:space-between;gap:22px;flex-wrap:wrap;margin-bottom:20px}
+  .head .left{display:flex;align-items:center;gap:16px}
+  .emblem{
+    width:54px;height:54px;border-radius:50%;flex:0 0 auto;position:relative;overflow:hidden;
+    display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;letter-spacing:.5px;color:#cfe4ff;
+    background:linear-gradient(180deg,#16233f,#0c1626);
+    border:1px solid rgba(120,170,245,0.45);
+    box-shadow:0 0 18px rgba(59,130,246,0.30), inset 0 1px 0 rgba(185,220,255,0.25)}
+  .emblem img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:50%;display:none}
+  /* Jarvis blue-chrome wordmark treatment for the title */
+  .head .title{margin:0;font-size:21px;font-weight:800;letter-spacing:.3px;
+    background:linear-gradient(180deg,#eaf6ff 0%,#8fd0ff 40%,#2f7fd6 53%,#6db8ff 64%,#dff1ff 100%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    filter:drop-shadow(0 1px 1px rgba(0,0,0,0.55)) drop-shadow(0 0 12px rgba(80,160,255,0.45))}
+  .head .acctline{font-size:12.5px;color:var(--muted);margin-top:4px;letter-spacing:.3px}
+  .head .acctline b{color:var(--blue-bright);font-weight:700}
+  .acct-link{text-decoration:none;cursor:pointer;transition:filter .15s}
+  .acct-link:hover b{text-decoration:underline;filter:drop-shadow(0 0 8px rgba(109,184,255,0.6))}
+  .head .right{display:flex;align-items:center;gap:18px}
+  .badge{display:inline-flex;align-items:center;gap:8px;padding:7px 14px;border-radius:9px;
+    font-weight:700;font-size:11.5px;letter-spacing:1.2px;text-transform:uppercase}
+  .badge.live{color:var(--green);background:rgba(52,211,153,0.10);border:1px solid rgba(52,211,153,0.4)}
+  .badge.test{color:var(--amber);background:rgba(245,181,74,0.10);border:1px solid rgba(245,181,74,0.4)}
+  .dot{width:8px;height:8px;border-radius:50%;background:currentColor;box-shadow:0 0 9px currentColor}
+  .badge.live .dot{animation:ring 2.4s infinite}
+  @keyframes ring{0%{box-shadow:0 0 0 0 rgba(52,211,153,.5)}70%{box-shadow:0 0 0 6px rgba(52,211,153,0)}100%{box-shadow:0 0 0 0 rgba(52,211,153,0)}}
+  .toggle-wrap{display:flex;align-items:center;gap:11px}
+  .toggle-wrap .lab{font-size:10.5px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted)}
+  .switch{position:relative;width:50px;height:28px;flex:0 0 auto}
+  .switch input{display:none}
+  .slider{position:absolute;inset:0;background:#222b3e;border:1px solid #314058;border-radius:999px;transition:.2s;cursor:pointer}
+  .slider:before{content:"";position:absolute;width:20px;height:20px;left:3px;top:3px;background:#b6c2d8;border-radius:50%;transition:.2s}
+  .switch input:checked + .slider{background:linear-gradient(180deg,#3ddf9e,#1f9e72);border-color:#34d399;box-shadow:0 0 14px rgba(52,211,153,.4)}
+  .switch input:checked + .slider:before{transform:translateX(22px);background:#fff}
+
+  /* ── Jarvis bold section header, blue accent bar + blue glow ── */
+  .sec{margin:28px 0 14px;font-size:18px;font-weight:800;letter-spacing:.3px;color:#f0f7ff;
+    border-left:3px solid var(--blue-bright);padding-left:12px;
+    text-shadow:0 1px 0 rgba(0,0,0,.5), 0 0 16px rgba(90,165,255,0.45)}
+
+  /* ── metric tiles: Jarvis navy cards, blue-chrome numbers ── */
+  .tiles{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(155px,1fr))}
+  .tile{position:relative;border-radius:14px;padding:22px 14px;text-align:center;overflow:hidden;
+    background:linear-gradient(180deg, rgba(150,205,255,0.10) 0%, rgba(120,185,255,0) 30%),
+      linear-gradient(180deg,#11244c 0%,#0a1730 100%);
+    border:1px solid var(--tile-border);
+    box-shadow:inset 0 1px 0 rgba(170,210,255,0.16), 0 12px 28px rgba(0,0,0,0.45);
+    transition:transform .15s, box-shadow .15s, border-color .15s}
+  .tile:hover{transform:translateY(-3px);border-color:rgba(120,175,255,0.5);
+    box-shadow:inset 0 1px 0 rgba(170,210,255,0.22), 0 18px 34px rgba(0,0,0,0.55), 0 0 22px rgba(59,130,246,0.18)}
+  .tile .num{font-size:32px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums;
+    background:linear-gradient(180deg,#eaf6ff 0%,#8fd0ff 45%,#2f7fd6 60%,#9ed3ff 100%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    filter:drop-shadow(0 0 12px rgba(90,165,255,0.4))}
+  .tile .lbl{font-size:10.5px;color:#9db8e6;margin-top:11px;text-transform:uppercase;letter-spacing:1.1px}
+
+  .cols{display:grid;gap:18px;grid-template-columns:1fr 1fr}
+  @media(max-width:820px){.cols{grid-template-columns:1fr}}
+  .muted{color:var(--muted);font-size:12.5px;line-height:1.5}
+  .panel h3{margin:0 0 2px;font-size:15px;font-weight:800;color:#eaf3ff;letter-spacing:.2px}
+
+  /* tester */
+  .test-input{display:flex;gap:10px;margin-top:14px}
+  input[type=text]{flex:1;background:#081226;border:1px solid var(--tile-border);color:var(--text);
+    padding:11px 14px;border-radius:10px;font-size:14px;outline:none;transition:border .15s,box-shadow .15s}
+  input[type=text]::placeholder{color:#5a6b88}
+  input[type=text]:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(59,130,246,0.16)}
+  button{background:linear-gradient(180deg, rgba(70,160,255,0.30), rgba(50,130,240,0.12));
+    color:#eaf6ff;border:1px solid var(--tile-border);padding:11px 20px;border-radius:10px;
+    font-weight:700;cursor:pointer;font-size:14px;letter-spacing:.3px;
+    box-shadow:inset 0 1px 0 rgba(190,225,255,0.18);transition:.15s}
+  button:hover{border-color:var(--blue);box-shadow:0 0 14px rgba(59,155,255,0.4), inset 0 1px 0 rgba(200,230,255,0.3)}
+  .chat{margin-top:16px;display:flex;flex-direction:column;gap:9px;max-height:250px;overflow:auto}
+  .bub{padding:10px 13px;border-radius:13px;max-width:84%;font-size:13.5px;line-height:1.5}
+  .them{align-self:flex-start;background:#14203a;border:1px solid var(--tile-border);border-bottom-left-radius:4px}
+  .bot{align-self:flex-end;background:linear-gradient(180deg,#2f72ef,#1d4ed8);border-bottom-right-radius:4px;
+    box-shadow:0 6px 16px rgba(37,99,235,0.3)}
+  .via{font-size:10px;color:var(--muted);margin-top:4px;letter-spacing:.6px;text-transform:uppercase}
+
+  .feed{display:flex;flex-direction:column;gap:12px;max-height:440px;overflow:auto}
+  .conv{border:1px solid var(--tile-border);border-radius:12px;padding:13px 15px;
+    background:linear-gradient(180deg,#0e1a32,#0a1426)}
+  .conv .who{font-weight:800;font-size:12.5px;color:var(--blue-bright)}
+  .conv .line{font-size:13px;margin-top:6px;color:#c7d2e6}
+  .conv .line b{color:var(--muted);font-weight:700}
+  .pill{display:inline-block;font-size:10px;padding:2px 9px;border-radius:6px;margin-left:8px;font-weight:700;
+    background:rgba(109,184,255,0.10);color:var(--blue-bright);border:1px solid rgba(109,184,255,0.35);
+    text-transform:uppercase;letter-spacing:.6px}
+  .lead{display:flex;justify-content:space-between;gap:10px;align-items:center;
+    border-bottom:1px solid rgba(120,170,245,0.12);padding:11px 0;font-size:13px;color:#c7d2e6}
+  .lead:last-child{border-bottom:0}
+  .empty{color:var(--muted);font-size:12.5px;padding:12px 0}
+  /* offers + keywords */
+  .addrow{display:flex;gap:9px;margin-top:14px;flex-wrap:wrap}
+  .addrow input,.addrow select{flex:1;min-width:130px;background:#081226;border:1px solid var(--tile-border);
+    color:var(--text);padding:10px 13px;border-radius:9px;font-size:13.5px;outline:none}
+  .addrow input:focus,.addrow select:focus{border-color:var(--blue)}
+  .addrow button{flex:0 0 auto}
+  select{appearance:none;cursor:pointer}
+  .offer-card{border:1px solid var(--tile-border);border-radius:12px;padding:13px 15px;
+    background:linear-gradient(180deg,#0e1a32,#0a1426);margin-bottom:11px}
+  .offer-card .nm{font-weight:800;font-size:13.5px;color:#eaf3ff}
+  .offer-card .desc{color:var(--muted);font-size:12px;margin:4px 0 9px}
+  .linkrow{display:flex;gap:8px;align-items:center}
+  .linkrow input{flex:1;background:#081226;border:1px solid var(--tile-border);color:var(--text);
+    padding:9px 12px;border-radius:8px;font-size:12.5px;outline:none;transition:border .2s}
+  .linkrow input:focus{border-color:var(--blue)}
+  .linkrow button{padding:9px 14px;font-size:12.5px}
+  .kw-row{display:flex;align-items:center;justify-content:space-between;gap:10px;
+    border-bottom:1px solid rgba(120,170,245,0.12);padding:11px 0;font-size:13.5px;color:#c7d2e6}
+  .kw-row:last-of-type{border-bottom:0}
+  .kw-trigger{display:inline-block;font-weight:800;color:var(--blue-bright);
+    background:rgba(109,184,255,0.10);border:1px solid rgba(109,184,255,0.3);border-radius:6px;padding:2px 10px}
+  .arrow{color:var(--muted);margin:0 8px}
+  .del{cursor:pointer;color:var(--muted);background:transparent;border:1px solid var(--tile-border);
+    border-radius:7px;padding:4px 9px;font-size:12px;line-height:1}
+  .del:hover{color:var(--red);border-color:var(--red)}
+  .foot{color:#4a5570;font-size:10.5px;text-align:center;margin-top:28px;letter-spacing:1.3px;text-transform:uppercase}
+  ::-webkit-scrollbar{width:8px;height:8px}
+  ::-webkit-scrollbar-thumb{background:rgba(120,170,245,0.22);border-radius:8px}
+  a{color:var(--blue-bright)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <!-- single merged header: ONE emblem = the real MMP logo -->
+  <div class="panel head">
+    <div class="left">
+      <div class="emblem"><span>MMP</span><img id="emblemImg" alt="MMP logo" /></div>
+      <div>
+        <div class="title">Instagram Control Center</div>
+        <div class="acctline"><a id="acctLink" class="acct-link" href="https://instagram.com/modern.man.protocol" target="_blank" rel="noopener"><b id="acctName">@—</b></a> <span id="acctSub">· —</span></div>
+      </div>
+    </div>
+    <div class="right">
+      <span id="statusBadge" class="badge test"><span class="dot"></span><span id="statusText">connecting</span></span>
+      <div class="toggle-wrap">
+        <span class="lab">Auto-reply</span>
+        <label class="switch"><input type="checkbox" id="enabledToggle"><span class="slider"></span></label>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec">Real Instagram numbers</div>
+  <div class="tiles">
+    <div class="tile"><div class="num" id="mFollowers">—</div><div class="lbl">Followers</div></div>
+    <div class="tile"><div class="num" id="mTotal">—</div><div class="lbl">Total posts</div></div>
+    <div class="tile"><div class="num" id="mWeek">—</div><div class="lbl">Posts this week</div></div>
+    <div class="tile"><div class="num" id="mMonth">—</div><div class="lbl">Posts this month</div></div>
+    <div class="tile"><div class="num" id="mLast">—</div><div class="lbl">Days since last post</div></div>
+  </div>
+
+  <div class="sec">Run the bot</div>
+  <div class="cols">
+    <div class="panel">
+      <h3>Try your bot</h3>
+      <div class="muted">Type a message the way a follower would — see exactly how it replies. No Instagram needed.</div>
+      <div class="test-input">
+        <input id="testText" type="text" placeholder="e.g. is there a free trial?" />
+        <button id="testBtn">Send</button>
+      </div>
+      <div class="chat" id="testChat"></div>
+    </div>
+    <div class="panel">
+      <h3>Captured leads</h3>
+      <div class="muted">People the bot flagged as interested — ready for follow-up.</div>
+      <div id="leads" style="margin-top:14px"></div>
+    </div>
+  </div>
+
+  <div class="sec">Offers</div>
+  <div class="panel">
+    <div class="muted">What the bot delivers when a keyword fires. Paste each offer's Gumroad / delivery link and hit Save.</div>
+    <div id="offers" style="margin-top:14px"></div>
+    <div class="addrow">
+      <input id="offerName" type="text" placeholder="New offer name (e.g. Discipline Bundle)" />
+      <input id="offerLink" type="text" placeholder="Gumroad / delivery link" />
+      <button id="addOfferBtn">Add offer</button>
+    </div>
+  </div>
+
+  <div class="sec">Keyword automations</div>
+  <div class="panel">
+    <div class="muted">Comment or DM a trigger word → the bot auto-sends that offer's link. (e.g. <b style="color:var(--blue-bright)">sleep</b> → Discipline Bundle)</div>
+    <div id="keywords" style="margin-top:14px"></div>
+    <div class="addrow">
+      <input id="kwTrigger" type="text" placeholder="Trigger word (e.g. sleep)" />
+      <select id="kwOffer"></select>
+      <button id="addKwBtn">Add keyword</button>
+    </div>
+  </div>
+
+  <div class="sec">Live conversations</div>
+  <div class="panel">
+    <div class="feed" id="feed"><div class="empty">No messages yet. Send your account a test DM and it will appear here in real time.</div></div>
+  </div>
+
+  <div class="foot">Live · refreshes every 5 seconds · <span id="clock"></span></div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => (s||'').replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+async function jget(u){ try{ const r = await fetch(u); return await r.json(); }catch(e){ return null; } }
+async function jpost(u,b){ try{ const r = await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)}); return await r.json(); }catch(e){ return null; } }
+
+async function refreshStatus(){
+  const s = await jget('/api/autoresponder/status');
+  const badge = $('statusBadge'), txt = $('statusText');
+  if(s && s.instagramLive){ badge.className='badge live'; txt.textContent='Live'; }
+  else { badge.className='badge test'; txt.textContent='Test mode'; }
+  if(s) $('enabledToggle').checked = !!s.enabled;
+}
+async function refreshMetrics(){
+  const m = await jget('/api/instagram/metrics');
+  if(!m || !m.connected) return;
+  if(m.profilePic){ const im=$('emblemImg'); if(im.getAttribute('src')!==m.profilePic){ im.onload=()=>{im.style.display='block'}; im.onerror=()=>{im.style.display='none'}; im.setAttribute('src', m.profilePic); } }
+  $('acctName').textContent = '@'+(m.username||'—');
+  if(m.username){ const lk=$('acctLink'); if(lk) lk.href='https://instagram.com/'+m.username; }
+  const type = m.accountType? m.accountType.charAt(0)+m.accountType.slice(1).toLowerCase() : '';
+  $('acctSub').textContent = '· ' + type + (m.following!=null? ' · following '+m.following : '');
+  $('mFollowers').textContent = m.followers ?? '—';
+  $('mTotal').textContent = m.totalPosts ?? '—';
+  $('mWeek').textContent = m.postsThisWeek ?? '—';
+  $('mMonth').textContent = m.postsThisMonth ?? '—';
+  $('mLast').textContent = (m.daysSinceLast==null? '—' : m.daysSinceLast);
+}
+function fmtTime(iso){ if(!iso) return ''; try{return new Date(iso).toLocaleString();}catch(e){return ''} }
+async function refreshFeed(){
+  const r = await jget('/api/autoresponder/conversations');
+  const feed = $('feed'); const cs = (r && r.conversations) || [];
+  if(!cs.length){ feed.innerHTML = '<div class="empty">No messages yet. Send your account a test DM and it will appear here in real time.</div>'; return; }
+  feed.innerHTML = cs.slice(0,20).map(c => {
+    const hist = (c.history||[]).slice(-4);
+    const lines = hist.map(h => '<div class="line"><b>'+(h.role==='user'?'They':'Bot')+'</b>  '+esc(h.content)+'</div>').join('');
+    const tags = (c.tags||[]).map(t=>'<span class="pill">'+esc(t)+'</span>').join('');
+    return '<div class="conv"><div class="who">'+esc(c.name||c.contactId)+tags+'</div>'+lines+'<div class="via">'+fmtTime(c.lastAt)+'</div></div>';
+  }).join('');
+}
+async function refreshLeads(){
+  const r = await jget('/api/autoresponder/leads');
+  const box = $('leads'); const ls = (r && r.leads) || [];
+  if(!ls.length){ box.innerHTML = '<div class="empty">No leads yet.</div>'; return; }
+  box.innerHTML = ls.slice().reverse().slice(0,12).map(l =>
+    '<div class="lead"><span>'+esc(l.name||l.contactId)+'  —  '+esc(l.interest||'')+'</span><span class="pill">'+esc(l.tag||'lead')+'</span></div>').join('');
+}
+$('enabledToggle').addEventListener('change', async (e) => { await jpost('/api/autoresponder/settings', { enabled: e.target.checked }); });
+async function runTest(){
+  const t = $('testText').value.trim(); if(!t) return;
+  const chat = $('testChat');
+  chat.innerHTML += '<div class="bub them">'+esc(t)+'</div>';
+  $('testText').value=''; chat.scrollTop = chat.scrollHeight;
+  const r = await jpost('/api/autoresponder/test', { text: t, contactId: 'dashboard-test' });
+  const reply = (r && r.reply) || '(no reply)'; const via = (r && r.via) ? r.via : '';
+  chat.innerHTML += '<div style="display:flex;flex-direction:column;align-items:flex-end"><div class="bub bot">'+esc(reply)+'</div><div class="via">'+esc(via)+'</div></div>';
+  chat.scrollTop = chat.scrollHeight;
+}
+$('testBtn').addEventListener('click', runTest);
+$('testText').addEventListener('keydown', e => { if(e.key==='Enter') runTest(); });
+
+// ── Offers + Keywords (loaded once, re-rendered only on edit so typing isn't clobbered) ──
+let _offers=[], _keywords=[];
+function flash(el){ const o=el.style.borderColor; el.style.borderColor='var(--green)'; setTimeout(()=>{el.style.borderColor=o;},900); }
+function slug(s){ return (s||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,40); }
+function populateOfferSelect(){
+  const sel=$('kwOffer'); if(!sel) return;
+  sel.innerHTML = _offers.length ? _offers.map(o=>'<option value="'+esc(o.id)+'">'+esc(o.name)+'</option>').join('') : '<option value="">— add an offer first —</option>';
+}
+async function refreshOffers(){
+  const r = await jget('/api/autoresponder/offers'); _offers=(r&&r.offers)||[];
+  const box=$('offers');
+  box.innerHTML = _offers.length ? _offers.map((o,i)=>
+    '<div class="offer-card"><div class="nm">'+esc(o.name)+'</div>'+
+    (o.description?'<div class="desc">'+esc(o.description)+'</div>':'<div class="desc">No description</div>')+
+    '<div class="linkrow"><input type="text" class="offer-link-input" data-i="'+i+'" placeholder="Paste Gumroad / delivery link" value="'+esc(o.link||'')+'" />'+
+    '<button class="save-offer" data-i="'+i+'">Save</button>'+
+    '<button class="del del-offer" data-i="'+i+'" title="Delete offer">✕</button></div></div>'
+  ).join('') : '<div class="empty">No offers yet — add one below.</div>';
+  box.querySelectorAll('.save-offer').forEach(b=>b.onclick=()=>saveOfferLink(+b.dataset.i));
+  box.querySelectorAll('.del-offer').forEach(b=>b.onclick=()=>delOffer(+b.dataset.i));
+  populateOfferSelect();
+}
+async function saveOfferLink(i){
+  const inp=document.querySelector('.offer-link-input[data-i="'+i+'"]'); if(!inp) return;
+  _offers[i].link=inp.value.trim();
+  await jpost('/api/autoresponder/offers',{offers:_offers}); flash(inp);
+}
+async function addOffer(){
+  const name=$('offerName').value.trim(); const link=$('offerLink').value.trim();
+  if(!name) return;
+  let id=slug(name)||('offer'+(_offers.length+1));
+  if(_offers.some(o=>o.id===id)) id=id+'-'+(_offers.length+1);
+  _offers.push({id,name,description:'',link});
+  await jpost('/api/autoresponder/offers',{offers:_offers});
+  $('offerName').value=''; $('offerLink').value=''; refreshOffers();
+}
+async function delOffer(i){ if(!confirm('Delete this offer?'))return; _offers.splice(i,1); await jpost('/api/autoresponder/offers',{offers:_offers}); refreshOffers(); }
+async function refreshKeywords(){
+  const r = await jget('/api/autoresponder/keywords'); _keywords=(r&&r.keywords)||[];
+  const box=$('keywords');
+  box.innerHTML = _keywords.length ? _keywords.map((k,i)=>{
+    const off=_offers.find(o=>o.id===k.offerId);
+    return '<div class="kw-row"><span><span class="kw-trigger">'+esc(k.trigger)+'</span><span class="arrow">→</span>'+esc(off?off.name:k.offerId)+'</span>'+
+      '<button class="del del-kw" data-i="'+i+'" title="Delete keyword">✕</button></div>';
+  }).join('') : '<div class="empty">No keywords yet — add one below.</div>';
+  box.querySelectorAll('.del-kw').forEach(b=>b.onclick=()=>delKw(+b.dataset.i));
+}
+async function addKeyword(){
+  const trigger=$('kwTrigger').value.trim().toLowerCase(); const offerId=$('kwOffer').value;
+  if(!trigger||!offerId) return;
+  _keywords.push({trigger,offerId,message:''});
+  await jpost('/api/autoresponder/keywords',{keywords:_keywords});
+  $('kwTrigger').value=''; refreshKeywords();
+}
+async function delKw(i){ _keywords.splice(i,1); await jpost('/api/autoresponder/keywords',{keywords:_keywords}); refreshKeywords(); }
+$('addOfferBtn').addEventListener('click', addOffer);
+$('addKwBtn').addEventListener('click', addKeyword);
+$('kwTrigger').addEventListener('keydown', e=>{ if(e.key==='Enter') addKeyword(); });
+(async()=>{ await refreshOffers(); await refreshKeywords(); })();
+
+function tick(){ $('clock').textContent = new Date().toLocaleTimeString(); }
+async function refreshAll(){ await Promise.all([refreshStatus(),refreshMetrics(),refreshFeed(),refreshLeads()]); }
+refreshAll(); tick(); setInterval(refreshAll,5000); setInterval(tick,1000);
+</script>
+</body>
+</html>

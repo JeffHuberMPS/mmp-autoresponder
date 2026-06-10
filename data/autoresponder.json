@@ -1,0 +1,79 @@
+{
+  "enabled": true,
+  "businessName": "Modular Performance Systems (MPS)",
+  "persona": "You are the Instagram assistant for Modular Performance Systems (MPS) — a brand built around discipline, performance, and faith: 'build a different man'. Talk like a sharp, motivating coach in the DMs: warm, direct, no fluff. Keep replies short (1-3 sentences) like a real person texting. Use the person's name if you know it. Never invent prices, links, or facts you weren't given — if you're unsure, offer to have the team follow up.",
+  "knowledge": "About MPS:\n- MPS is a subscription platform of self-improvement tracker apps: Workout, Habit, Rest/Recovery, and Expense trackers (a Journal app is coming soon).\n- The mission/vibe: discipline, performance, and faith — 'build a different man.'\n- Website: https://modular-performance.com\n- Pricing: starts at $5.99/month for a single tracker, up to an All-Access plan for every app.\n- There is a 7-day FREE trial — anyone can try it before paying.\n- To start, point people to https://modular-performance.com to begin their free trial.",
+  "rules": [
+    {
+      "match": [
+        "price",
+        "pricing",
+        "cost",
+        "how much",
+        "plans"
+      ],
+      "mode": "contains",
+      "reply": "Plans start at just $5.99/mo for a single tracker, up to All-Access for everything — and there's a 7-day free trial so you can try before you pay. 💪 https://modular-performance.com"
+    },
+    {
+      "match": [
+        "link",
+        "website",
+        "site",
+        "sign up",
+        "join",
+        "app"
+      ],
+      "mode": "contains",
+      "reply": "Here's where to start (free 7-day trial): https://modular-performance.com 🚀"
+    },
+    {
+      "match": [
+        "trial",
+        "free",
+        "try"
+      ],
+      "mode": "contains",
+      "reply": "Yes — 7 days free, no commitment. Start here and see how it feels: https://modular-performance.com 🔥"
+    }
+  ],
+  "greetFirstTime": true,
+  "greeting": "Yo! 👋 Thanks for reaching out to MPS — how can I help you build a different man today?",
+  "businessHours": {
+    "enabled": false,
+    "start": 9,
+    "end": 18,
+    "days": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "awayMessage": "Appreciate you reaching out! We're off the clock right now but we'll get right back to you. In the meantime, you can start your free 7-day trial anytime: https://modular-performance.com 🙏"
+  },
+  "handoffMinutes": 60,
+  "stopWords": [
+    "stop",
+    "unsubscribe",
+    "human",
+    "agent",
+    "real person"
+  ],
+  "memoryTurns": 12,
+  "offers": [
+    {
+      "id": "discipline-bundle",
+      "name": "Tracker + 7-Day Discipline Reset",
+      "description": "The MMP tracker bundle plus the free 7-Day Discipline Reset.",
+      "link": "https://mindsetlion3.gumroad.com/l/Reset"
+    }
+  ],
+  "keywords": [
+    {
+      "trigger": "sleep",
+      "offerId": "discipline-bundle",
+      "message": "Here's your 7-Day Discipline Reset + the tracker bundle 👇"
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+# Render.com Blueprint — deploys the autoresponder as a free always-on web service.
+# In Render: New + → Blueprint → connect this repo. It reads this file automatically.
+services:
+  - type: web
+    name: mmp-autoresponder
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js
+    healthCheckPath: /health
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false        # paste your Claude key in the Render dashboard
+      - key: IG_ACCESS_TOKEN
+        sync: false        # paste your Instagram token
+      - key: IG_APP_SECRET
+        sync: false        # paste your Instagram app secret
+      - key: IG_VERIFY_TOKEN
+        value: jarvis-secret-handshake
+      - key: IG_GRAPH_BASE
+        value: https://graph.instagram.com/v21.0
