@@ -1,0 +1,59 @@
+==========================================================
+  GET YOUR AUTORESPONDER RUNNING 24/7 (laptop off)  — Render
+==========================================================
+
+Everything is already built and tested in this folder. To put it online so it
+replies even when your computer is off, we host it for FREE on Render.
+No credit card. Claude will drive the technical parts — you just create the
+two free accounts and click a few buttons.
+
+WHAT YOU GET: a permanent web address like
+   https://mmp-autoresponder.onrender.com
+that Instagram talks to 24/7.
+
+--------------------------------------------------------
+THE STEPS (Claude does the gray parts WITH you)
+--------------------------------------------------------
+
+1. FREE GITHUB ACCOUNT  (this is where your code lives)
+   - Go to github.com  →  Sign up  (email + password, free)
+   - (Skip if you already have one — just log in.)
+
+2. PUT THE CODE ON GITHUB
+   - Claude creates a new repo and pushes this folder up for you.
+   - (You may get one browser pop-up to authorize the push — click Authorize.)
+
+3. FREE RENDER ACCOUNT  (the host)
+   - Go to render.com  →  Get Started  →  "Sign in with GitHub"
+   - Authorize Render to see your repos. (Free, no card.)
+
+4. DEPLOY
+   - In Render:  New +  →  Blueprint  →  pick the mmp-autoresponder repo
+   - Render reads render.yaml and sets it up automatically.
+
+5. PASTE 3 SECRETS  (Claude gives you the exact values)
+   In Render's Environment settings, paste:
+   - ANTHROPIC_API_KEY  (your Claude key)
+   - IG_ACCESS_TOKEN    (your Instagram token)
+   - IG_APP_SECRET      (your Instagram app secret)
+   (IG_VERIFY_TOKEN and IG_GRAPH_BASE are already filled in.)
+
+6. CLICK DEPLOY  →  wait ~2 min  →  you get your permanent URL.
+
+7. POINT INSTAGRAM AT IT  (Claude does this)
+   In your Meta app webhook settings, change the Callback URL to:
+       https://YOUR-RENDER-URL/webhook/instagram
+   Verify token stays:  jarvis-secret-handshake
+   → Verify and save.  Done. It now runs 24/7.
+
+--------------------------------------------------------
+TWO HONEST NOTES
+--------------------------------------------------------
+- FREE tier "sleeps" after ~15 min idle and wakes when a DM arrives (takes a few
+  seconds; Instagram retries so no message is lost). Fine for now. A $7/mo plan
+  keeps it awake instantly if you ever want that.
+- Saved conversations/leads reset if the host restarts (offers + keywords are
+  baked in, so those stay). When you want leads to persist permanently, Claude
+  can add a free database — just ask.
+
+When you're ready, tell Claude "let's deploy" and it'll walk you through 1–7.
