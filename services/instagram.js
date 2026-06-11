@@ -78,7 +78,7 @@ export function parseEvents(body) {
 // "quick reply" buttons. In test mode (no token set) it just logs what it WOULD
 // send, so you can develop without a live account.
 //   quickReplies: [{ title: '7-Day Discipline Reset', payload: 'RESET' }, ...]
-export async function sendMessage(recipientId, text, quickReplies = null) {
+export async function sendMessage(recipientId, text, quickReplies = null, opts = {}) {
   const message = { text };
   if (Array.isArray(quickReplies) && quickReplies.length) {
     message.quick_replies = quickReplies.slice(0, 13).map((q) => ({
@@ -92,11 +92,16 @@ export async function sendMessage(recipientId, text, quickReplies = null) {
     console.log(`  💬 [test mode] would reply to ${recipientId}: "${text}"${btns}`);
     return { ok: true, testMode: true };
   }
+  // Follow-up nudges (sent 1-7 days later) use the HUMAN_AGENT tag, which extends
+  // the messaging window from 24h to 7 days. Normal replies use RESPONSE.
+  const tagging = opts.humanAgent
+    ? { messaging_type: 'MESSAGE_TAG', tag: 'HUMAN_AGENT' }
+    : { messaging_type: 'RESPONSE' };
   const url = `${config.igGraphBase}/me/messages?access_token=${encodeURIComponent(config.igAccessToken)}`;
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ recipient: { id: recipientId }, message, messaging_type: 'RESPONSE' }),
+    body: JSON.stringify({ recipient: { id: recipientId }, message, ...tagging }),
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {

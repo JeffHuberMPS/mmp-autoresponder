@@ -14,7 +14,7 @@
 import fs from 'node:fs';
 import Anthropic from '@anthropic-ai/sdk';
 import { config } from '../config.js';
-import { userFollowsBusiness } from './instagram.js';
+import { userFollowsBusiness, sendMessage } from './instagram.js';
 
 // ── Default settings, written to disk the first time the app runs. This is the
 // stuff you'll personalize: your business, your tone, your canned replies.
@@ -119,6 +119,19 @@ const DEFAULT_SETTINGS = {
     followConfirmed: "Locked in. 💪 Here you go:",
     handle: 'modern.man.protocol',
   },
+
+  // ── FOLLOW-UPS: nudge people who engaged but never grabbed anything. Sent a
+  // few days later (inside Instagram's 7-day window) with compelling copy. ──
+  followups: {
+    enabled: true,
+    delayHours: 72,   // first nudge ~3 days after their last message
+    intervalHours: 48, // additional nudges this far apart (if more than one)
+    withinDays: 7,    // never message past IG's 7-day window
+    // One entry = one nudge. Add more for a sequence. Edit the copy freely.
+    messages: [
+      "Hey 👋 you stopped by but never grabbed anything — and honestly, that's the exact move that keeps most guys exactly where they are. The 7-Day Discipline Reset rebuilds your mornings, focus, and follow-through in a week, for $0. No catch. Reply RESET and follow @modern.man.protocol and I'll send it straight over. Don't let another week run you. 💪",
+    ],
+  },
 };
 
 // ── Tiny JSON file helpers (load-or-default, atomic-ish save). ──
@@ -149,6 +162,7 @@ export function getSettings() {
       if (!Array.isArray(_settings.offers)) { _settings.offers = DEFAULT_SETTINGS.offers; changed = true; }
       if (!Array.isArray(_settings.keywords)) { _settings.keywords = DEFAULT_SETTINGS.keywords; changed = true; }
       if (!_settings.flow) { _settings.flow = DEFAULT_SETTINGS.flow; changed = true; }
+      if (!_settings.followups) { _settings.followups = DEFAULT_SETTINGS.followups; changed = true; }
       if (changed) writeJson(config.autoresponderFile, _settings);
     }
   }
@@ -552,4 +566,64 @@ export function handleEcho(contactId, text) {
   convos[contactId] = convo;
   saveConversations(convos);
   return { handoff: true, until };
+}
+
+// ── FOLLOW-UP NUDGES ─────────────────────────────────────────────────
+// Did this person already grab something (so we should NOT keep nudging)?
+function isConverted(convo) {
+  return (convo.tags || []).some((t) => t.startsWith('offer:') || t.startsWith('picked:'));
+}
+// Timestamp (ms) of their last message FROM them (not the bot).
+function lastUserAtMs(convo) {
+  for (let i = (convo.history || []).length - 1; i >= 0; i--) {
+    if (convo.history[i].role === 'user') return Date.parse(convo.history[i].at) || 0;
+  }
+  return convo.firstAt ? Date.parse(convo.firstAt) || 0 : 0;
+}
+
+// Find everyone who's due for a nudge and send it. Returns a summary. Safe to
+// call often (on an interval or by an external cron) — it only sends when due.
+export async function runFollowups(opts = {}) {
+  const s = getSettings();
+  const fu = s.followups;
+  if (!fu?.enabled || !Array.isArray(fu.messages) || !fu.messages.length) {
+    return { ran: true, sent: 0, reason: 'disabled' };
+  }
+  const now = opts.now || Date.now();
+  const HOUR = 3600_000;
+  const convos = loadConversations();
+  let sent = 0;
+  const detail = [];
+
+  for (const [contactId, convo] of Object.entries(convos)) {
+    if (convo.optedOut) continue;          // they asked for a human / to stop
+    if (isConverted(convo)) continue;      // already grabbed something
+    const lastUser = lastUserAtMs(convo);
+    if (!lastUser) continue;
+    const ageH = (now - lastUser) / HOUR;
+    if (ageH > fu.withinDays * 24) continue;   // past IG's 7-day window — can't message
+    const count = convo.nudgeCount || 0;
+    if (count >= fu.messages.length) continue; // sent them the whole sequence
+
+    // First nudge after delayHours from their last message; later ones spaced by intervalHours.
+    const dueAfterH = count === 0 ? fu.delayHours : fu.delayHours + count * (fu.intervalHours || 48);
+    const sinceLastNudgeH = convo.lastNudgeAt ? (now - Date.parse(convo.lastNudgeAt)) / HOUR : Infinity;
+    if (ageH < dueAfterH) continue;                         // not time yet
+    if (count > 0 && sinceLastNudgeH < (fu.intervalHours || 48)) continue; // space out nudges
+
+    const text = fu.messages[count];
+    try {
+      rememberSent(text); // so the echo isn't mistaken for Jeff typing
+      await sendMessage(contactId, text, null, { humanAgent: true });
+      convo.nudgeCount = count + 1;
+      convo.lastNudgeAt = new Date(now).toISOString();
+      convo.history.push({ role: 'assistant', content: text, at: convo.lastNudgeAt, nudge: true });
+      sent++;
+      detail.push({ contactId, nudge: count + 1 });
+    } catch (e) {
+      detail.push({ contactId, error: e.message });
+    }
+  }
+  if (sent) saveConversations(convos);
+  return { ran: true, sent, detail };
 }

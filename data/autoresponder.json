@@ -100,5 +100,14 @@
     "followConfirmed": "Locked in. 💪 Here you go:",
     "handle": "modern.man.protocol",
     "requireFollow": true
+  },
+  "followups": {
+    "enabled": true,
+    "delayHours": 72,
+    "intervalHours": 48,
+    "withinDays": 7,
+    "messages": [
+      "Hey 👋 you stopped by but never grabbed anything — and honestly, that's the exact move that keeps most guys exactly where they are. The 7-Day Discipline Reset rebuilds your mornings, focus, and follow-through in a week, for $0. No catch. Reply RESET and follow @modern.man.protocol and I'll send it straight over. Don't let another week run you. 💪"
+    ]
   }
 }

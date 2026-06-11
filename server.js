@@ -15,7 +15,7 @@ import {
 import {
   handleIncoming, handleEcho, rememberSent, getSettings, saveSettings,
   listConversations, getConversation, listLeads,
-  getOffers, getKeywords, saveOffers, saveKeywords,
+  getOffers, getKeywords, saveOffers, saveKeywords, runFollowups,
 } from './services/autoresponder.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -85,6 +85,12 @@ app.post('/api/autoresponder/keywords', (req, res) => {
 app.get('/api/instagram/metrics', async (req, res) => {
   res.json(await getAccountInfo().catch((e) => ({ ok: false, connected: false, error: e.message })));
 });
+
+// Follow-up nudges — run any that are due. A cron/uptime ping hits this to both
+// keep the free instance awake AND fire scheduled nudges.
+app.get('/api/followups/run', async (req, res) => res.json(await runFollowups().catch((e) => ({ ran: false, error: e.message }))));
+app.post('/api/followups/run', async (req, res) => res.json(await runFollowups().catch((e) => ({ ran: false, error: e.message }))));
+setInterval(() => { runFollowups().catch((e) => console.error('⚠ followups:', e.message)); }, 30 * 60_000);
 
 // ── The visual Control Center page ──
 app.get('/ig', (req, res) => res.sendFile(path.join(__dirname, 'views', 'ig.html')));
