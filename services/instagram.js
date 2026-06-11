@@ -51,11 +51,13 @@ export function parseEvents(body) {
     for (const m of entry.messaging || []) {
       const senderId = m.sender?.id;
       const text = m.message?.text;
-      if (!text) continue; // ignore non-text (stickers, reactions) for now
+      const payload = m.message?.quick_reply?.payload || null; // a tapped button
+      if (!text && !payload) continue; // ignore non-text (stickers, reactions) for now
       events.push({
         type: m.message?.is_echo ? 'echo' : 'message',
         contactId: m.message?.is_echo ? m.recipient?.id : senderId,
-        text,
+        text: text || '',
+        payload,
         raw: m,
       });
     }
@@ -72,24 +74,29 @@ export function parseEvents(body) {
   return events;
 }
 
-// Sends a text reply back to a person on Instagram. In test mode (no token set)
-// it just logs what it WOULD send, so you can develop without a live account.
-export async function sendMessage(recipientId, text) {
+// Sends a text reply back to a person on Instagram, optionally with tappable
+// "quick reply" buttons. In test mode (no token set) it just logs what it WOULD
+// send, so you can develop without a live account.
+//   quickReplies: [{ title: '7-Day Discipline Reset', payload: 'RESET' }, ...]
+export async function sendMessage(recipientId, text, quickReplies = null) {
+  const message = { text };
+  if (Array.isArray(quickReplies) && quickReplies.length) {
+    message.quick_replies = quickReplies.slice(0, 13).map((q) => ({
+      content_type: 'text',
+      title: String(q.title).slice(0, 20), // IG limit: 20 chars per button
+      payload: String(q.payload || q.title),
+    }));
+  }
   if (!instagramLive()) {
-    console.log(`  💬 [test mode] would reply to ${recipientId}: "${text}"`);
+    const btns = message.quick_replies ? ` [buttons: ${message.quick_replies.map((q) => q.title).join(' | ')}]` : '';
+    console.log(`  💬 [test mode] would reply to ${recipientId}: "${text}"${btns}`);
     return { ok: true, testMode: true };
   }
-  const url = `${config.igGraphBase}/me/messages?access_token=${encodeURIComponent(
-    config.igAccessToken
-  )}`;
+  const url = `${config.igGraphBase}/me/messages?access_token=${encodeURIComponent(config.igAccessToken)}`;
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      recipient: { id: recipientId },
-      message: { text },
-      messaging_type: 'RESPONSE',
-    }),
+    body: JSON.stringify({ recipient: { id: recipientId }, message, messaging_type: 'RESPONSE' }),
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
@@ -97,6 +104,26 @@ export async function sendMessage(recipientId, text) {
     throw new Error(`Instagram send failed: ${msg}`);
   }
   return { ok: true, ...data };
+}
+
+// Looks up a person who messaged you and returns whether they follow your
+// account. Returns true / false, or null if Instagram doesn't tell us (so the
+// bot can fall back gracefully instead of blocking someone forever).
+export async function userFollowsBusiness(igsid) {
+  if (!instagramLive() || !igsid) return null;
+  try {
+    const url = `${config.igGraphBase}/${encodeURIComponent(igsid)}?fields=name,username,is_user_follow_business,follower_count&access_token=${encodeURIComponent(config.igAccessToken)}`;
+    const res = await fetch(url);
+    const d = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      console.error(`  ⚠ follow-check failed for ${igsid}: ${d?.error?.message || res.status}`);
+      return null;
+    }
+    return typeof d.is_user_follow_business === 'boolean' ? d.is_user_follow_business : null;
+  } catch (e) {
+    console.error(`  ⚠ follow-check error: ${e.message}`);
+    return null;
+  }
 }
 
 // Pulls REAL, live account metrics straight from Instagram: the actual

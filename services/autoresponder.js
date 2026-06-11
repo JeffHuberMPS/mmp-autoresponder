@@ -14,6 +14,7 @@
 import fs from 'node:fs';
 import Anthropic from '@anthropic-ai/sdk';
 import { config } from '../config.js';
+import { userFollowsBusiness } from './instagram.js';
 
 // ── Default settings, written to disk the first time the app runs. This is the
 // stuff you'll personalize: your business, your tone, your canned replies.
@@ -82,6 +83,39 @@ const DEFAULT_SETTINGS = {
       message: "Here's your 7-Day Discipline Reset + the tracker bundle 👇",
     },
   ],
+
+  // ── FLOW: the first thing a new DMer sees — a question with tappable buttons.
+  // Each option either delivers an OFFER (optionally behind a follow-gate) or
+  // sends a LINK. This is the "comment → must follow → get the link" funnel. ──
+  flow: {
+    enabled: true,
+    // Shown on the very first message, with the options below as buttons.
+    question: "Welcome to MMP 🔥 What are you here for?",
+    options: [
+      {
+        title: '7-Day Discipline Reset',
+        payload: 'RESET',
+        action: 'offer',
+        offerId: 'discipline-bundle',
+        requireFollow: true, // they must follow before the link is sent
+      },
+      {
+        title: 'MPS Trackers',
+        payload: 'TRACKERS',
+        action: 'link',
+        link: 'https://modular-performance.com',
+        requireFollow: false,
+        message:
+          "The MPS Trackers are our apps for workouts, habits, recovery, and money — built to keep you disciplined. Take a look 👇",
+      },
+    ],
+    // Sent when a follow-gated option is chosen but they don't follow yet.
+    followMessage:
+      "Almost there! 🔒 Make sure you're following @modern.man.protocol, then reply DONE and I'll send it straight over.",
+    // Sent right before the link once we've confirmed they follow.
+    followConfirmed: "Locked in. 💪 Here you go:",
+    handle: 'modern.man.protocol',
+  },
 };
 
 // ── Tiny JSON file helpers (load-or-default, atomic-ish save). ──
@@ -111,6 +145,7 @@ export function getSettings() {
       let changed = false;
       if (!Array.isArray(_settings.offers)) { _settings.offers = DEFAULT_SETTINGS.offers; changed = true; }
       if (!Array.isArray(_settings.keywords)) { _settings.keywords = DEFAULT_SETTINGS.keywords; changed = true; }
+      if (!_settings.flow) { _settings.flow = DEFAULT_SETTINGS.flow; changed = true; }
       if (changed) writeJson(config.autoresponderFile, _settings);
     }
   }
@@ -210,6 +245,60 @@ function offerReply(prefix, keyword, offer) {
   const intro = keyword.message || `Here you go — ${offer.name}:`;
   const body = offer.link ? offer.link : '(link coming soon — ask me again shortly!)';
   return (prefix + intro + '\n' + body).trim();
+}
+
+// Did the person pick a menu option? Match a tapped-button payload first, then
+// their typed text against the option titles/payloads.
+function resolveChoice(flow, text, payload) {
+  const opts = (flow && flow.options) || [];
+  if (payload) {
+    const byPayload = opts.find((o) => o.payload === payload);
+    if (byPayload) return byPayload;
+  }
+  const t = (text || '').toLowerCase().trim();
+  if (!t) return null;
+  return (
+    opts.find((o) => t === o.title.toLowerCase()) ||
+    opts.find((o) => o.payload && t === o.payload.toLowerCase()) ||
+    opts.find((o) => o.title.length > 4 && t.includes(o.title.toLowerCase())) ||
+    null
+  );
+}
+
+// Buttons to attach to the menu question (title + payload for each option).
+function menuButtons(flow) {
+  return ((flow && flow.options) || []).map((o) => ({ title: o.title, payload: o.payload }));
+}
+
+// Does this offer get the follow-gate (per the flow config)?
+function offerRequiresFollow(s, offerId) {
+  const opts = (s.flow && s.flow.options) || [];
+  return opts.some((o) => o.action === 'offer' && o.offerId === offerId && o.requireFollow);
+}
+
+// follows: true / false / null(unknown). Returns the reply object for delivering
+// `offer` — gated behind a follow when required. Mutates convo's follow state.
+async function deliverOffer({ s, convo, prefix, offerId, contactId, now, requireFollow }) {
+  const offer = (s.offers || []).find((o) => o.id === offerId);
+  if (!offer) return { reply: (prefix + "Hmm, that offer isn't set up yet.").trim(), via: 'offer-missing' };
+
+  if (requireFollow) {
+    const follows = await userFollowsBusiness(contactId);
+    if (follows === false) {
+      // Not following → gate it. Remember what they're waiting for.
+      convo.stage = 'awaitFollow';
+      convo.pendingOfferId = offerId;
+      return { reply: (prefix + (s.flow?.followMessage || 'Follow me first and I will send it over.')).trim(), via: 'gate-follow' };
+    }
+    // follows === true OR null(unknown) → deliver (don't block on an API gap).
+  }
+  convo.stage = null;
+  convo.pendingOfferId = null;
+  convo.tags = Array.from(new Set([...(convo.tags || []), 'offer:' + offerId]));
+  saveLead({ contactId, name: convo.name, interest: 'wants ' + offer.name, tag: 'offer-' + offerId, at: now });
+  const intro = requireFollow && s.flow?.followConfirmed ? s.flow.followConfirmed : `Here you go — ${offer.name}:`;
+  const body = offer.link || '(link coming soon)';
+  return { reply: (prefix + intro + '\n' + body).trim(), via: 'offer', offer: offerId };
 }
 
 // ── The AI agent. Builds a system prompt from your settings + this person's
@@ -349,6 +438,40 @@ export async function handleIncoming(contactId, text, opts = {}) {
   // Record the incoming message.
   convo.history.push({ role: 'user', content: text, at: now });
 
+  // ── FLOW: the menu + follow-gate funnel (runs first when enabled) ──
+  if (s.flow?.enabled) {
+    // (a) Waiting for them to follow before we hand over a pending offer.
+    if (convo.stage === 'awaitFollow' && convo.pendingOfferId) {
+      const res = await deliverOffer({ s, convo, prefix: '', offerId: convo.pendingOfferId, contactId, now, requireFollow: true });
+      convo.history.push({ role: 'assistant', content: res.reply, at: now });
+      return finish(res);
+    }
+    // (b) They picked an option (tapped a button or typed its name).
+    const choice = resolveChoice(s.flow, text, opts.payload);
+    if (choice) {
+      convo.greeted = true;
+      let res;
+      if (choice.action === 'offer') {
+        res = await deliverOffer({ s, convo, prefix: '', offerId: choice.offerId, contactId, now, requireFollow: !!choice.requireFollow });
+      } else {
+        const intro = choice.message ? choice.message + '\n' : '';
+        res = { reply: (intro + (choice.link || '')).trim(), via: 'link' };
+        convo.tags = Array.from(new Set([...(convo.tags || []), 'picked:' + choice.payload]));
+      }
+      convo.history.push({ role: 'assistant', content: res.reply, at: now });
+      return finish(res);
+    }
+    // (c) First contact (menu not shown yet) → show the question + buttons.
+    if (!convo.menuShown) {
+      convo.greeted = true;
+      convo.menuShown = true;
+      const reply = s.flow.question;
+      convo.history.push({ role: 'assistant', content: reply, at: now });
+      return finish({ reply, via: 'menu', quickReplies: menuButtons(s.flow) });
+    }
+    // Otherwise (returning user, said something off-menu) → fall through to AI.
+  }
+
   // First-ever message → optional greeting (prepended to whatever we answer).
   const isFirst = !convo.greeted;
   let prefix = '';
@@ -364,14 +487,14 @@ export async function handleIncoming(contactId, text, opts = {}) {
     return finish({ reply, via: 'away' });
   }
 
-  // Keyword → OFFER: send the delivery link (the money path). Checked first.
+  // Keyword → OFFER: send the delivery link (the money path) — behind the same
+  // follow-gate as the menu when that offer requires it.
   const kw = matchKeyword(s, text);
   if (kw && kw.offer) {
-    const reply = offerReply(prefix, kw.keyword, kw.offer);
-    convo.history.push({ role: 'assistant', content: reply, at: now });
-    convo.tags = Array.from(new Set([...(convo.tags || []), 'offer:' + kw.offer.id]));
-    saveLead({ contactId, name: convo.name, interest: 'wants ' + kw.offer.name, tag: 'offer-' + kw.offer.id, at: now });
-    return finish({ reply, via: 'offer', offer: kw.offer.id });
+    const requireFollow = !!(s.flow?.enabled && offerRequiresFollow(s, kw.offer.id));
+    const res = await deliverOffer({ s, convo, prefix, offerId: kw.offer.id, contactId, now, requireFollow });
+    convo.history.push({ role: 'assistant', content: res.reply, at: now });
+    return finish(res);
   }
 
   // Keyword rule → instant canned reply.

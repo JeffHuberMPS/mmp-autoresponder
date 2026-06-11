@@ -45,10 +45,10 @@ app.post('/webhook/instagram', async (req, res) => {
   try {
     for (const ev of parseEvents(req.body)) {
       if (ev.type === 'echo') { handleEcho(ev.contactId, ev.text); continue; }
-      const { reply } = await handleIncoming(ev.contactId, ev.text);
-      if (reply) {
-        rememberSent(reply);
-        await sendMessage(ev.contactId, reply).catch((e) => console.error('⚠ IG send failed:', e.message));
+      const result = await handleIncoming(ev.contactId, ev.text, { payload: ev.payload });
+      if (result.reply) {
+        rememberSent(result.reply);
+        await sendMessage(ev.contactId, result.reply, result.quickReplies).catch((e) => console.error('⚠ IG send failed:', e.message));
       }
     }
   } catch (err) {
@@ -59,9 +59,9 @@ app.post('/webhook/instagram', async (req, res) => {
 // ── Control Center APIs ──
 app.post('/api/autoresponder/test', async (req, res) => {
   try {
-    const { text, contactId = 'test-user' } = req.body || {};
-    if (!text || !text.trim()) return fail(res, new Error('Send some text to test with'), 400);
-    ok(res, await handleIncoming(contactId, text.trim()));
+    const { text, contactId = 'test-user', payload } = req.body || {};
+    if ((!text || !text.trim()) && !payload) return fail(res, new Error('Send some text to test with'), 400);
+    ok(res, await handleIncoming(contactId, (text || '').trim(), { payload }));
   } catch (err) { fail(res, err); }
 });
 app.get('/api/autoresponder/settings', (req, res) => ok(res, { settings: getSettings() }));

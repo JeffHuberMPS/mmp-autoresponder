@@ -75,5 +75,29 @@
       "offerId": "discipline-bundle",
       "message": "Here's your 7-Day Discipline Reset + the tracker bundle 👇"
     }
-  ]
+  ],
+  "flow": {
+    "enabled": true,
+    "question": "Welcome to MMP 🔥 What are you here for?",
+    "options": [
+      {
+        "title": "7-Day Discipline Reset",
+        "payload": "RESET",
+        "action": "offer",
+        "offerId": "discipline-bundle",
+        "requireFollow": true
+      },
+      {
+        "title": "MPS Trackers",
+        "payload": "TRACKERS",
+        "action": "link",
+        "link": "https://modular-performance.com",
+        "requireFollow": false,
+        "message": "The MPS Trackers are our apps for workouts, habits, recovery, and money — built to keep you disciplined. Take a look 👇"
+      }
+    ],
+    "followMessage": "Almost there! 🔒 Make sure you're following @modern.man.protocol, then reply DONE and I'll send it straight over.",
+    "followConfirmed": "Locked in. 💪 Here you go:",
+    "handle": "modern.man.protocol"
+  }
 }
