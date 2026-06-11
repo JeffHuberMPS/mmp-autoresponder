@@ -89,6 +89,9 @@ const DEFAULT_SETTINGS = {
   // sends a LINK. This is the "comment → must follow → get the link" funnel. ──
   flow: {
     enabled: true,
+    // Gate EVERYTHING behind a follow: no matter which option they pick, if they
+    // don't follow you yet, they must follow before the bot delivers anything.
+    requireFollow: true,
     // Shown on the very first message, with the options below as buttons.
     question: "Welcome to MMP 🔥 What are you here for?",
     options: [
@@ -276,29 +279,39 @@ function offerRequiresFollow(s, offerId) {
   return opts.some((o) => o.action === 'offer' && o.offerId === offerId && o.requireFollow);
 }
 
-// follows: true / false / null(unknown). Returns the reply object for delivering
-// `offer` — gated behind a follow when required. Mutates convo's follow state.
-async function deliverOffer({ s, convo, prefix, offerId, contactId, now, requireFollow }) {
-  const offer = (s.offers || []).find((o) => o.id === offerId);
-  if (!offer) return { reply: (prefix + "Hmm, that offer isn't set up yet.").trim(), via: 'offer-missing' };
+// Actually deliver a chosen option's payload: an offer's link, or a website link.
+// `confirmed` = we just verified a follow, so we lead with the "Locked in" line.
+function executeChoice(s, convo, contactId, now, choice, confirmed) {
+  if (choice.action === 'offer') {
+    const offer = (s.offers || []).find((o) => o.id === choice.offerId);
+    if (!offer) return { reply: "Hmm, that offer isn't set up yet.", via: 'offer-missing' };
+    convo.tags = Array.from(new Set([...(convo.tags || []), 'offer:' + choice.offerId]));
+    saveLead({ contactId, name: convo.name, interest: 'wants ' + offer.name, tag: 'offer-' + choice.offerId, at: now });
+    const intro = confirmed ? (s.flow?.followConfirmed || 'Here you go:') : (choice.message || `Here you go — ${offer.name}:`);
+    return { reply: (intro + '\n' + (offer.link || '(link coming soon)')).trim(), via: 'offer', offer: choice.offerId };
+  }
+  // action === 'link'
+  convo.tags = Array.from(new Set([...(convo.tags || []), 'picked:' + (choice.payload || 'link')]));
+  const intro = confirmed ? (s.flow?.followConfirmed || '') : (choice.message || '');
+  return { reply: ((intro ? intro + '\n' : '') + (choice.link || '')).trim(), via: 'link' };
+}
 
-  if (requireFollow) {
+// Gate a chosen option behind a follow (when the flow requires it), then deliver.
+// If they don't follow yet, remembers the choice and asks them to follow first.
+// Graceful: only HARD-blocks when Instagram explicitly says is_user_follow_business=false.
+async function gateAndDeliver(s, convo, contactId, now, choice, justFollowed = false) {
+  const mustFollow = !!(s.flow?.requireFollow || choice.requireFollow);
+  if (mustFollow) {
     const follows = await userFollowsBusiness(contactId);
     if (follows === false) {
-      // Not following → gate it. Remember what they're waiting for.
       convo.stage = 'awaitFollow';
-      convo.pendingOfferId = offerId;
-      return { reply: (prefix + (s.flow?.followMessage || 'Follow me first and I will send it over.')).trim(), via: 'gate-follow' };
+      convo.pendingChoice = choice;
+      return { reply: s.flow?.followMessage || 'Follow me first and I will send it over.', via: 'gate-follow' };
     }
-    // follows === true OR null(unknown) → deliver (don't block on an API gap).
   }
   convo.stage = null;
-  convo.pendingOfferId = null;
-  convo.tags = Array.from(new Set([...(convo.tags || []), 'offer:' + offerId]));
-  saveLead({ contactId, name: convo.name, interest: 'wants ' + offer.name, tag: 'offer-' + offerId, at: now });
-  const intro = requireFollow && s.flow?.followConfirmed ? s.flow.followConfirmed : `Here you go — ${offer.name}:`;
-  const body = offer.link || '(link coming soon)';
-  return { reply: (prefix + intro + '\n' + body).trim(), via: 'offer', offer: offerId };
+  convo.pendingChoice = null;
+  return executeChoice(s, convo, contactId, now, choice, justFollowed);
 }
 
 // ── The AI agent. Builds a system prompt from your settings + this person's
@@ -440,24 +453,18 @@ export async function handleIncoming(contactId, text, opts = {}) {
 
   // ── FLOW: the menu + follow-gate funnel (runs first when enabled) ──
   if (s.flow?.enabled) {
-    // (a) Waiting for them to follow before we hand over a pending offer.
-    if (convo.stage === 'awaitFollow' && convo.pendingOfferId) {
-      const res = await deliverOffer({ s, convo, prefix: '', offerId: convo.pendingOfferId, contactId, now, requireFollow: true });
+    // (a) Waiting for them to follow → re-check, then deliver what they wanted
+    //     (whatever they originally picked — offer OR website).
+    if (convo.stage === 'awaitFollow' && convo.pendingChoice) {
+      const res = await gateAndDeliver(s, convo, contactId, now, convo.pendingChoice, true);
       convo.history.push({ role: 'assistant', content: res.reply, at: now });
       return finish(res);
     }
-    // (b) They picked an option (tapped a button or typed its name).
+    // (b) They picked an option (tapped a button or typed its name) → gate + deliver.
     const choice = resolveChoice(s.flow, text, opts.payload);
     if (choice) {
       convo.greeted = true;
-      let res;
-      if (choice.action === 'offer') {
-        res = await deliverOffer({ s, convo, prefix: '', offerId: choice.offerId, contactId, now, requireFollow: !!choice.requireFollow });
-      } else {
-        const intro = choice.message ? choice.message + '\n' : '';
-        res = { reply: (intro + (choice.link || '')).trim(), via: 'link' };
-        convo.tags = Array.from(new Set([...(convo.tags || []), 'picked:' + choice.payload]));
-      }
+      const res = await gateAndDeliver(s, convo, contactId, now, choice);
       convo.history.push({ role: 'assistant', content: res.reply, at: now });
       return finish(res);
     }
@@ -488,11 +495,16 @@ export async function handleIncoming(contactId, text, opts = {}) {
   }
 
   // Keyword → OFFER: send the delivery link (the money path) — behind the same
-  // follow-gate as the menu when that offer requires it.
+  // follow-gate as the menu.
   const kw = matchKeyword(s, text);
   if (kw && kw.offer) {
-    const requireFollow = !!(s.flow?.enabled && offerRequiresFollow(s, kw.offer.id));
-    const res = await deliverOffer({ s, convo, prefix, offerId: kw.offer.id, contactId, now, requireFollow });
+    const choice = {
+      action: 'offer',
+      offerId: kw.offer.id,
+      message: kw.keyword.message,
+      requireFollow: !!(s.flow?.enabled && (s.flow?.requireFollow || offerRequiresFollow(s, kw.offer.id))),
+    };
+    const res = await gateAndDeliver(s, convo, contactId, now, choice);
     convo.history.push({ role: 'assistant', content: res.reply, at: now });
     return finish(res);
   }

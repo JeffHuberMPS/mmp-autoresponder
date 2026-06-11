@@ -110,6 +110,10 @@ export async function sendMessage(recipientId, text, quickReplies = null) {
 // account. Returns true / false, or null if Instagram doesn't tell us (so the
 // bot can fall back gracefully instead of blocking someone forever).
 export async function userFollowsBusiness(igsid) {
+  // Test hooks: set FORCE_NO_FOLLOW=1 (or FORCE_FOLLOW=1) to simulate follow
+  // status without a real Instagram user. Off in production (env unset).
+  if (process.env.FORCE_NO_FOLLOW === '1') return false;
+  if (process.env.FORCE_FOLLOW === '1') return true;
   if (!instagramLive() || !igsid) return null;
   try {
     const url = `${config.igGraphBase}/${encodeURIComponent(igsid)}?fields=name,username,is_user_follow_business,follower_count&access_token=${encodeURIComponent(config.igAccessToken)}`;
