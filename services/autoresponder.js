@@ -132,6 +132,23 @@ const DEFAULT_SETTINGS = {
       "Hey 👋 you stopped by but never grabbed anything — and honestly, that's the exact move that keeps most guys exactly where they are. The 7-Day Discipline Reset rebuilds your mornings, focus, and follow-through in a week, for $0. No catch. Reply RESET and follow @modern.man.protocol and I'll send it straight over. Don't let another week run you. 💪",
     ],
   },
+
+  // ── UPSELLS: after someone GRABS an offer, check in a few days later and softly
+  // present the next step. Timed from when they grabbed it. Stays inside IG's
+  // 7-day window (so delayHours must be < ~160). ──
+  upsells: {
+    enabled: true,
+    withinDays: 7,
+    steps: [
+      {
+        id: 'reset-to-fullapp',
+        offerId: 'discipline-bundle',
+        delayHours: 144, // ~6 days — day 7 is the edge of IG's window
+        message:
+          "How's the 7-Day Reset treating you? 🔥 Quick heads up — the Reset gets you the Habit tracker. The full MMP app stacks your workouts, finances, and sleep + recovery on top, all in one place. You can start it free or upgrade for the full toolkit whenever — no pressure, just didn't want you to miss that it's an option 👉 https://modular-performance.com",
+      },
+    ],
+  },
 };
 
 // ── Tiny JSON file helpers (load-or-default, atomic-ish save). ──
@@ -163,6 +180,7 @@ export function getSettings() {
       if (!Array.isArray(_settings.keywords)) { _settings.keywords = DEFAULT_SETTINGS.keywords; changed = true; }
       if (!_settings.flow) { _settings.flow = DEFAULT_SETTINGS.flow; changed = true; }
       if (!_settings.followups) { _settings.followups = DEFAULT_SETTINGS.followups; changed = true; }
+      if (!_settings.upsells) { _settings.upsells = DEFAULT_SETTINGS.upsells; changed = true; }
       if (changed) writeJson(config.autoresponderFile, _settings);
     }
   }
@@ -300,6 +318,7 @@ function executeChoice(s, convo, contactId, now, choice, confirmed) {
     const offer = (s.offers || []).find((o) => o.id === choice.offerId);
     if (!offer) return { reply: "Hmm, that offer isn't set up yet.", via: 'offer-missing' };
     convo.tags = Array.from(new Set([...(convo.tags || []), 'offer:' + choice.offerId]));
+    convo.offerGrabbedAt = { ...(convo.offerGrabbedAt || {}), [choice.offerId]: now }; // time the upsell from here
     saveLead({ contactId, name: convo.name, interest: 'wants ' + offer.name, tag: 'offer-' + choice.offerId, at: now });
     const intro = confirmed ? (s.flow?.followConfirmed || 'Here you go:') : (choice.message || `Here you go — ${offer.name}:`);
     return { reply: (intro + '\n' + (offer.link || '(link coming soon)')).trim(), via: 'offer', offer: choice.offerId };
@@ -581,45 +600,68 @@ function lastUserAtMs(convo) {
   return convo.firstAt ? Date.parse(convo.firstAt) || 0 : 0;
 }
 
-// Find everyone who's due for a nudge and send it. Returns a summary. Safe to
-// call often (on an interval or by an external cron) — it only sends when due.
+// Decide the ONE message (if any) that's due for a contact right now. Checks the
+// post-offer UPSELL first, then the no-grab NUDGE. Returns {text, mark} or null.
+function dueMessage(s, convo, lastUser, now) {
+  const HOUR = 3600_000;
+  const ageUserH = (now - lastUser) / HOUR;
+
+  // 1) UPSELL — they grabbed an offer; check in a few days later (timed from the grab).
+  const up = s.upsells;
+  if (up?.enabled && Array.isArray(up.steps)) {
+    convo.sentUpsells = convo.sentUpsells || [];
+    if (ageUserH <= (up.withinDays || 7) * 24) {
+      for (const step of up.steps) {
+        if (convo.sentUpsells.includes(step.id)) continue;
+        if (!(convo.tags || []).includes('offer:' + step.offerId)) continue;
+        const grabbedMs = convo.offerGrabbedAt?.[step.offerId] ? Date.parse(convo.offerGrabbedAt[step.offerId]) : lastUser;
+        if ((now - grabbedMs) / HOUR < step.delayHours) continue;
+        return { text: step.message, kind: 'upsell:' + step.id, mark: () => convo.sentUpsells.push(step.id) };
+      }
+    }
+  }
+
+  // 2) NUDGE — they engaged but grabbed nothing.
+  const fu = s.followups;
+  if (fu?.enabled && Array.isArray(fu.messages) && fu.messages.length && !isConverted(convo)) {
+    if (ageUserH <= (fu.withinDays || 7) * 24) {
+      const count = convo.nudgeCount || 0;
+      if (count < fu.messages.length) {
+        const dueAfterH = count === 0 ? fu.delayHours : fu.delayHours + count * (fu.intervalHours || 48);
+        const sinceLastH = convo.lastNudgeAt ? (now - Date.parse(convo.lastNudgeAt)) / HOUR : Infinity;
+        if (ageUserH >= dueAfterH && (count === 0 || sinceLastH >= (fu.intervalHours || 48))) {
+          return { text: fu.messages[count], kind: 'nudge:' + (count + 1), mark: () => { convo.nudgeCount = count + 1; } };
+        }
+      }
+    }
+  }
+  return null;
+}
+
+// Find everyone due for a nudge/upsell and send it. Safe to call often (timer or
+// external cron) — only sends when due, and at most ONE message per person per run.
 export async function runFollowups(opts = {}) {
   const s = getSettings();
-  const fu = s.followups;
-  if (!fu?.enabled || !Array.isArray(fu.messages) || !fu.messages.length) {
-    return { ran: true, sent: 0, reason: 'disabled' };
-  }
+  if (!s.followups?.enabled && !s.upsells?.enabled) return { ran: true, sent: 0, reason: 'disabled' };
   const now = opts.now || Date.now();
-  const HOUR = 3600_000;
   const convos = loadConversations();
   let sent = 0;
   const detail = [];
 
   for (const [contactId, convo] of Object.entries(convos)) {
-    if (convo.optedOut) continue;          // they asked for a human / to stop
-    if (isConverted(convo)) continue;      // already grabbed something
+    if (convo.optedOut) continue;            // they asked for a human / to stop
     const lastUser = lastUserAtMs(convo);
     if (!lastUser) continue;
-    const ageH = (now - lastUser) / HOUR;
-    if (ageH > fu.withinDays * 24) continue;   // past IG's 7-day window — can't message
-    const count = convo.nudgeCount || 0;
-    if (count >= fu.messages.length) continue; // sent them the whole sequence
-
-    // First nudge after delayHours from their last message; later ones spaced by intervalHours.
-    const dueAfterH = count === 0 ? fu.delayHours : fu.delayHours + count * (fu.intervalHours || 48);
-    const sinceLastNudgeH = convo.lastNudgeAt ? (now - Date.parse(convo.lastNudgeAt)) / HOUR : Infinity;
-    if (ageH < dueAfterH) continue;                         // not time yet
-    if (count > 0 && sinceLastNudgeH < (fu.intervalHours || 48)) continue; // space out nudges
-
-    const text = fu.messages[count];
+    const due = dueMessage(s, convo, lastUser, now);
+    if (!due) continue;
     try {
-      rememberSent(text); // so the echo isn't mistaken for Jeff typing
-      await sendMessage(contactId, text, null, { humanAgent: true });
-      convo.nudgeCount = count + 1;
+      rememberSent(due.text); // so the echo isn't mistaken for Jeff typing
+      await sendMessage(contactId, due.text, null, { humanAgent: true });
+      due.mark();
       convo.lastNudgeAt = new Date(now).toISOString();
-      convo.history.push({ role: 'assistant', content: text, at: convo.lastNudgeAt, nudge: true });
+      convo.history.push({ role: 'assistant', content: due.text, at: convo.lastNudgeAt, drip: due.kind });
       sent++;
-      detail.push({ contactId, nudge: count + 1 });
+      detail.push({ contactId, kind: due.kind });
     } catch (e) {
       detail.push({ contactId, error: e.message });
     }
