@@ -54,6 +54,8 @@ app.post('/webhook/instagram', async (req, res) => {
   } catch (err) {
     console.error('⚠ webhook processing error:', err.message);
   }
+  // Any activity also fires due follow-up nudges (baseline; a cron makes it punctual).
+  runFollowups().catch(() => {});
 });
 
 // ── Control Center APIs ──
