@@ -164,6 +164,22 @@
   .del{cursor:pointer;color:var(--muted);background:transparent;border:1px solid var(--tile-border);
     border-radius:7px;padding:4px 9px;font-size:12px;line-height:1}
   .del:hover{color:var(--red);border-color:var(--red)}
+  /* automations editor */
+  .field{margin-top:13px}
+  .field label{display:block;font-size:10.5px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+  textarea{width:100%;background:#081226;border:1px solid var(--tile-border);color:var(--text);padding:11px 13px;
+    border-radius:9px;font-size:13.5px;font-family:inherit;line-height:1.55;resize:vertical;min-height:72px;outline:none;transition:border .15s}
+  textarea:focus{border-color:var(--blue)}
+  .hdrow{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:4px}
+  .gate-badge{display:inline-flex;align-items:center;gap:6px;font-size:10px;font-weight:700;letter-spacing:.5px;padding:3px 10px;
+    border-radius:6px;background:rgba(52,211,153,0.10);color:var(--green);border:1px solid rgba(52,211,153,0.35);text-transform:uppercase}
+  .btnsave{margin-top:12px}
+  .flash{color:var(--green);font-size:12px;margin-left:10px;opacity:0;transition:opacity .25s}
+  .flash.show{opacity:1}
+  .timing{font-size:11px;color:var(--blue-bright);background:rgba(109,184,255,0.08);border:1px solid rgba(109,184,255,0.25);
+    border-radius:6px;padding:3px 9px;display:inline-block;margin-top:4px}
+  .btnpill{display:inline-block;font-size:11px;padding:4px 11px;border-radius:999px;margin:4px 6px 0 0;
+    background:#16233f;border:1px solid var(--tile-border);color:#cfe0ff}
   .foot{color:#4a5570;font-size:10.5px;text-align:center;margin-top:28px;letter-spacing:1.3px;text-transform:uppercase}
   ::-webkit-scrollbar{width:8px;height:8px}
   ::-webkit-scrollbar-thumb{background:rgba(120,170,245,0.22);border-radius:8px}
@@ -237,6 +253,44 @@
       <select id="kwOffer"></select>
       <button id="addKwBtn">Add keyword</button>
     </div>
+  </div>
+
+  <div class="sec">Welcome menu (what new DMers see)</div>
+  <div class="panel">
+    <div class="hdrow">
+      <div class="muted">The first thing someone gets when they DM or comment — a question with tappable buttons.</div>
+      <span class="gate-badge">🔒 Follow-gated</span>
+    </div>
+    <div class="field"><label>Question</label><input id="flowQuestion" type="text" /></div>
+    <div id="flowButtons" style="margin-top:6px"></div>
+    <div class="field"><label>"Follow me first" message</label><textarea id="flowFollowMsg"></textarea></div>
+    <button class="btnsave" id="saveFlow">Save menu</button><span class="flash" id="flowFlash">Saved ✓</span>
+  </div>
+
+  <div class="sec">Auto follow-ups</div>
+  <div class="cols">
+    <div class="panel">
+      <div class="hdrow"><h3>Day-3 nudge</h3><label class="switch"><input type="checkbox" id="nudgeToggle"><span class="slider"></span></label></div>
+      <div class="muted">Sent to people who stopped by but grabbed nothing.</div>
+      <div class="timing" id="nudgeTiming">after 3 days</div>
+      <textarea id="nudgeMsg" style="margin-top:10px"></textarea>
+      <button class="btnsave" id="saveNudge">Save</button><span class="flash" id="nudgeFlash">Saved ✓</span>
+    </div>
+    <div class="panel">
+      <div class="hdrow"><h3>Day-6 upsell</h3><label class="switch"><input type="checkbox" id="upsellToggle"><span class="slider"></span></label></div>
+      <div class="muted">Sent after someone grabs the free Reset — softly pitches the full app.</div>
+      <div class="timing" id="upsellTiming">after 6 days</div>
+      <textarea id="upsellMsg" style="margin-top:10px"></textarea>
+      <button class="btnsave" id="saveUpsell">Save</button><span class="flash" id="upsellFlash">Saved ✓</span>
+    </div>
+  </div>
+
+  <div class="sec">Comment automation</div>
+  <div class="panel">
+    <div class="hdrow"><h3>Auto-DM commenters</h3><label class="switch"><input type="checkbox" id="caToggle"><span class="slider"></span></label></div>
+    <div class="muted">When someone comments on a post, the bot auto-DMs them into the funnel and posts a public reply under their comment.</div>
+    <div class="field"><label>Public reply under their comment</label><input id="caPublic" type="text" /></div>
+    <button class="btnsave" id="saveCA">Save</button><span class="flash" id="caFlash">Saved ✓</span>
   </div>
 
   <div class="sec">Live conversations</div>
@@ -366,6 +420,35 @@ $('addOfferBtn').addEventListener('click', addOffer);
 $('addKwBtn').addEventListener('click', addKeyword);
 $('kwTrigger').addEventListener('keydown', e=>{ if(e.key==='Enter') addKeyword(); });
 (async()=>{ await refreshOffers(); await refreshKeywords(); })();
+
+// ── Automations editor (menu / follow-ups / upsell / comment automation) ──
+let _auto = null;
+function autoFlash(id){ const e=$(id); if(!e)return; e.classList.add('show'); setTimeout(()=>e.classList.remove('show'),1500); }
+async function saveAuto(patch, flashId){ await jpost('/api/autoresponder/settings', patch); autoFlash(flashId); }
+async function loadAutomations(){
+  const r = await jget('/api/autoresponder/settings'); _auto = (r && r.settings) || {};
+  const f=_auto.flow||{}, fu=_auto.followups||{}, up=_auto.upsells||{}, ca=_auto.commentAutomation||{};
+  if($('flowQuestion')) $('flowQuestion').value = f.question||'';
+  if($('flowFollowMsg')) $('flowFollowMsg').value = f.followMessage||'';
+  if($('flowButtons')) $('flowButtons').innerHTML = (f.options||[]).map(o=>'<span class="btnpill">'+esc(o.title)+((o.requireFollow||f.requireFollow)?' 🔒':'')+'</span>').join('');
+  if($('nudgeToggle')) $('nudgeToggle').checked = !!fu.enabled;
+  if($('nudgeMsg')) $('nudgeMsg').value = (fu.messages&&fu.messages[0])||'';
+  if($('nudgeTiming')) $('nudgeTiming').textContent = 'after '+Math.round((fu.delayHours||72)/24)+' days';
+  const step = up.steps&&up.steps[0];
+  if($('upsellToggle')) $('upsellToggle').checked = !!up.enabled;
+  if($('upsellMsg')) $('upsellMsg').value = (step&&step.message)||'';
+  if($('upsellTiming')) $('upsellTiming').textContent = 'after '+Math.round(((step&&step.delayHours)||144)/24)+' days';
+  if($('caToggle')) $('caToggle').checked = !!ca.enabled;
+  if($('caPublic')) $('caPublic').value = ca.publicReply||'';
+}
+$('saveFlow').onclick=()=>{ _auto.flow=_auto.flow||{}; _auto.flow.question=$('flowQuestion').value; _auto.flow.followMessage=$('flowFollowMsg').value; saveAuto({flow:_auto.flow},'flowFlash'); };
+$('nudgeToggle').onchange=e=>{ _auto.followups=_auto.followups||{messages:[]}; _auto.followups.enabled=e.target.checked; saveAuto({followups:_auto.followups},'nudgeFlash'); };
+$('saveNudge').onclick=()=>{ _auto.followups=_auto.followups||{}; _auto.followups.messages=[$('nudgeMsg').value]; saveAuto({followups:_auto.followups},'nudgeFlash'); };
+$('upsellToggle').onchange=e=>{ _auto.upsells=_auto.upsells||{steps:[]}; _auto.upsells.enabled=e.target.checked; saveAuto({upsells:_auto.upsells},'upsellFlash'); };
+$('saveUpsell').onclick=()=>{ if(_auto.upsells&&_auto.upsells.steps&&_auto.upsells.steps[0]){ _auto.upsells.steps[0].message=$('upsellMsg').value; saveAuto({upsells:_auto.upsells},'upsellFlash'); } };
+$('caToggle').onchange=e=>{ _auto.commentAutomation=_auto.commentAutomation||{}; _auto.commentAutomation.enabled=e.target.checked; saveAuto({commentAutomation:_auto.commentAutomation},'caFlash'); };
+$('saveCA').onclick=()=>{ _auto.commentAutomation=_auto.commentAutomation||{}; _auto.commentAutomation.publicReply=$('caPublic').value; saveAuto({commentAutomation:_auto.commentAutomation},'caFlash'); };
+loadAutomations();
 
 function tick(){ $('clock').textContent = new Date().toLocaleTimeString(); }
 async function refreshAll(){ await Promise.all([refreshStatus(),refreshMetrics(),refreshFeed(),refreshLeads()]); }
