@@ -149,6 +149,16 @@ const DEFAULT_SETTINGS = {
       },
     ],
   },
+
+  // ── COMMENT AUTOMATION: when someone comments on a post, auto-DM them and drop
+  // them into the funnel (the #1 growth move). publicReply also posts under their
+  // comment to prompt them to check DMs (blank = skip). ──
+  commentAutomation: {
+    enabled: true,
+    publicReply: "Just sent you a DM 📩",
+    // Default = every comment on any post triggers a DM. (Can scope to a specific
+    // post or keyword later if you want.)
+  },
 };
 
 // ── Tiny JSON file helpers (load-or-default, atomic-ish save). ──
@@ -181,6 +191,7 @@ export function getSettings() {
       if (!_settings.flow) { _settings.flow = DEFAULT_SETTINGS.flow; changed = true; }
       if (!_settings.followups) { _settings.followups = DEFAULT_SETTINGS.followups; changed = true; }
       if (!_settings.upsells) { _settings.upsells = DEFAULT_SETTINGS.upsells; changed = true; }
+      if (!_settings.commentAutomation) { _settings.commentAutomation = DEFAULT_SETTINGS.commentAutomation; changed = true; }
       if (changed) writeJson(config.autoresponderFile, _settings);
     }
   }
@@ -190,6 +201,7 @@ export function getSettings() {
 // ── Offers + Keywords accessors (used by the dashboard + the bot). ──
 export function getOffers() { return getSettings().offers || []; }
 export function getKeywords() { return getSettings().keywords || []; }
+export function getCommentAutomation() { return getSettings().commentAutomation || { enabled: false }; }
 export function saveOffers(offers) { return saveSettings({ offers: Array.isArray(offers) ? offers : [] }); }
 export function saveKeywords(keywords) { return saveSettings({ keywords: Array.isArray(keywords) ? keywords : [] }); }
 export function saveSettings(patch) {

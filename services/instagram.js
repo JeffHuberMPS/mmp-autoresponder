@@ -61,14 +61,23 @@ export function parseEvents(body) {
         raw: m,
       });
     }
-    // Comments / story replies arrive under `changes` (best-effort support).
+    // Comments arrive under `changes` — the "comment → auto-DM" growth trigger.
     for (const c of entry.changes || []) {
+      if (c.field !== 'comments') continue;
       const v = c.value || {};
-      const text = v.text || v.message;
-      const contactId = v.from?.id || v.sender?.id;
-      if (c.field === 'comments' && text && contactId) {
-        events.push({ type: 'comment', contactId, text, raw: c });
-      }
+      const fromId = v.from?.id;
+      const commentId = v.id;
+      if (!commentId || !fromId) continue;
+      events.push({
+        type: 'comment',
+        contactId: fromId,
+        commentId,
+        text: v.text || '',
+        username: v.from?.username || null,
+        mediaId: v.media?.id || null,
+        accountId: entry.id || null, // business account id — to skip our own comments
+        raw: c,
+      });
     }
   }
   return events;
@@ -108,6 +117,49 @@ export async function sendMessage(recipientId, text, quickReplies = null, opts =
     const msg = data?.error?.message || `HTTP ${res.status}`;
     throw new Error(`Instagram send failed: ${msg}`);
   }
+  return { ok: true, ...data };
+}
+
+// Sends a DM to whoever made a comment (a "private reply"). This is the
+// comment→auto-DM growth trigger. recipient is the comment id, not a user id.
+export async function sendPrivateReply(commentId, text, quickReplies = null) {
+  const message = { text };
+  if (Array.isArray(quickReplies) && quickReplies.length) {
+    message.quick_replies = quickReplies.slice(0, 13).map((q) => ({
+      content_type: 'text',
+      title: String(q.title).slice(0, 20),
+      payload: String(q.payload || q.title),
+    }));
+  }
+  if (!instagramLive()) {
+    console.log(`  💬 [test mode] private DM to commenter (${commentId}): "${text}"`);
+    return { ok: true, testMode: true };
+  }
+  const url = `${config.igGraphBase}/me/messages?access_token=${encodeURIComponent(config.igAccessToken)}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ recipient: { comment_id: commentId }, message }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(`Private reply failed: ${data?.error?.message || res.status}`);
+  return { ok: true, ...data };
+}
+
+// Posts a PUBLIC reply under a comment (e.g. "Just sent you a DM 📩").
+export async function replyToComment(commentId, text) {
+  if (!instagramLive()) {
+    console.log(`  💬 [test mode] public reply on comment ${commentId}: "${text}"`);
+    return { ok: true, testMode: true };
+  }
+  const url = `${config.igGraphBase}/${encodeURIComponent(commentId)}/replies?access_token=${encodeURIComponent(config.igAccessToken)}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message: text }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(`Comment reply failed: ${data?.error?.message || res.status}`);
   return { ok: true, ...data };
 }
 

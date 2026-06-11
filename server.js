@@ -10,12 +10,12 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { config } from './config.js';
 import {
-  verifyWebhook, verifySignature, parseEvents, sendMessage, instagramLive, getAccountInfo,
+  verifyWebhook, verifySignature, parseEvents, sendMessage, sendPrivateReply, replyToComment, instagramLive, getAccountInfo,
 } from './services/instagram.js';
 import {
   handleIncoming, handleEcho, rememberSent, getSettings, saveSettings,
   listConversations, getConversation, listLeads,
-  getOffers, getKeywords, saveOffers, saveKeywords, runFollowups,
+  getOffers, getKeywords, saveOffers, saveKeywords, runFollowups, getCommentAutomation,
 } from './services/autoresponder.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -28,6 +28,27 @@ const fail = (res, err, code = 500) => res.status(code).json({ ok: false, error:
 
 process.on('uncaughtException', (err) => console.error('⚠ uncaught:', err?.message || err));
 process.on('unhandledRejection', (err) => console.error('⚠ unhandled rejection:', err?.message || err));
+
+// Comment → auto-DM. Someone comments → DM them the funnel + optional public reply.
+const _seenComments = new Set();
+async function handleCommentEvent(ev) {
+  const cfg = getCommentAutomation();
+  if (!cfg.enabled) return;
+  if (ev.accountId && ev.contactId === ev.accountId) return; // our own comment
+  if (_seenComments.has(ev.commentId)) return;
+  _seenComments.add(ev.commentId);
+  if (_seenComments.size > 500) _seenComments.clear();
+  try {
+    const result = await handleIncoming(ev.contactId, ev.text, {});
+    if (result.reply) {
+      rememberSent(result.reply);
+      await sendPrivateReply(ev.commentId, result.reply, result.quickReplies).catch((e) => console.error('⚠ comment DM failed:', e.message));
+    }
+    if (cfg.publicReply) await replyToComment(ev.commentId, cfg.publicReply).catch((e) => console.error('⚠ public reply failed:', e.message));
+  } catch (e) {
+    console.error('⚠ comment automation error:', e.message);
+  }
+}
 
 // Health check (hosts ping this).
 app.get('/health', (req, res) => ok(res, { status: 'online', instagramLive: instagramLive() }));
@@ -45,6 +66,7 @@ app.post('/webhook/instagram', async (req, res) => {
   try {
     for (const ev of parseEvents(req.body)) {
       if (ev.type === 'echo') { handleEcho(ev.contactId, ev.text); continue; }
+      if (ev.type === 'comment') { await handleCommentEvent(ev); continue; }
       const result = await handleIncoming(ev.contactId, ev.text, { payload: ev.payload });
       if (result.reply) {
         rememberSent(result.reply);

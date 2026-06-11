@@ -121,5 +121,9 @@
         "message": "How's the 7-Day Reset treating you? 🔥 Quick heads up — the Reset gets you the Habit tracker. The full MMP app stacks your workouts, finances, and sleep + recovery on top, all in one place. You can start it free or upgrade for the full toolkit whenever — no pressure, just didn't want you to miss that it's an option 👉 https://modular-performance.com"
       }
     ]
+  },
+  "commentAutomation": {
+    "enabled": true,
+    "publicReply": "Just sent you a DM 📩"
   }
 }
