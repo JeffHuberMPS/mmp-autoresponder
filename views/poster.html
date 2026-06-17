@@ -35,9 +35,11 @@
     box-shadow:0 18px 40px rgba(0,0,0,0.55), inset 0 1px 0 rgba(185,220,255,0.22)}
   .head{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
   .head .left{display:flex;align-items:center;gap:13px}
-  .emblem{width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;
-    font-size:20px;background:linear-gradient(180deg,#16233f,#0c1626);
-    border:1px solid rgba(120,170,245,0.45);box-shadow:0 0 18px rgba(59,130,246,0.30)}
+  .emblem{position:relative;overflow:hidden;width:48px;height:48px;border-radius:50%;flex:0 0 auto;
+    display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;letter-spacing:.5px;color:#e8c873;
+    background:linear-gradient(180deg,#1c1c1c,#000);
+    border:1px solid rgba(212,175,55,0.5);box-shadow:0 0 16px rgba(212,175,55,0.25)}
+  .emblem img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:50%;display:none}
   .title{margin:0;font-size:20px;font-weight:800;
     background:linear-gradient(180deg,#eaf6ff 0%,#8fd0ff 40%,#2f7fd6 53%,#6db8ff 64%,#dff1ff 100%);
     -webkit-background-clip:text;background-clip:text;color:transparent}
@@ -117,7 +119,7 @@
   <div class="panel">
     <div class="head">
       <div class="left">
-        <div class="emblem">▶</div>
+        <div class="emblem"><span>MMP</span><img id="emblemImg" alt="MMP logo" /></div>
         <div>
           <h1 class="title">Auto-Poster</h1>
           <div class="sub">Schedule photos to your feed &amp; story.</div>
@@ -133,10 +135,15 @@
   <div class="panel">
     <div class="sec">New post</div>
 
+    <div class="seg" id="postKind" style="margin-bottom:14px">
+      <div class="opt on" data-k="single">Single post</div>
+      <div class="opt" data-k="carousel">Carousel</div>
+    </div>
+
     <div id="drop" class="drop">
       <div style="font-size:28px;margin-bottom:4px">＋</div>
-      Tap to add photos<br>
-      <span class="muted">1 photo = single post · 2–10 = carousel</span>
+      <span id="dropText">Tap to add a photo</span><br>
+      <span class="muted" id="dropHint">One photo</span>
     </div>
     <input id="file" type="file" accept="image/*" multiple style="display:none" />
     <div id="thumbs" class="thumbs"></div>
@@ -194,12 +201,22 @@
 const $ = (id) => document.getElementById(id);
 let staged = [];      // [{preview, url, publicId, uploading}]
 let target = 'feed';
+let postKind = 'single';   // 'single' | 'carousel'
+const maxPhotos = () => postKind === 'single' ? 1 : 10;
 
 function toast(m, ok=true){ const t=$('toast'); t.textContent=m; t.className='toast show '+(ok?'ok':'err'); setTimeout(()=>t.className='toast',2800); }
 async function api(p, opts){ const r=await fetch(p,opts); const j=await r.json().catch(()=>({})); if(!r.ok||j.ok===false) throw new Error(j.error||('HTTP '+r.status)); return j; }
 const fmtWhen=(iso)=> new Date(iso).toLocaleString([], {weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
 const fmtTime=(iso)=> new Date(iso).toLocaleString([], {hour:'numeric',minute:'2-digit'});
 const dayKey=(iso)=>{ const d=new Date(iso); return d.toLocaleDateString([], {weekday:'long',month:'long',day:'numeric'}); };
+
+// Show the black-and-gold MMP logo (your live Instagram profile picture).
+async function loadLogo(){
+  try{
+    const m = await (await fetch('/api/instagram/metrics')).json();
+    if(m && m.profilePic){ const im=$('emblemImg'); im.onload=()=>im.style.display='block'; im.src=m.profilePic; }
+  }catch{ /* falls back to the gold "MMP" text */ }
+}
 
 async function loadStatus(){
   const s = await api('/api/poster/status');
@@ -218,9 +235,11 @@ async function loadStatus(){
 
 function readAsDataURL(f){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(f); }); }
 async function addFiles(files){
+  // Single post = exactly one photo: a new pick replaces what's there.
+  if(postKind === 'single'){ staged = []; files = [files[0]].filter(Boolean); }
   for(const f of files){
     if(!f.type.startsWith('image/')) continue;
-    if(staged.length>=10){ toast('Max 10 photos per post', false); break; }
+    if(staged.length>=maxPhotos()){ toast(postKind==='single'?'Single post uses 1 photo — switch to Carousel for more':'Max 10 photos in a carousel', false); break; }
     const preview = await readAsDataURL(f);
     const slot = { preview, url:null, publicId:null, uploading:true };
     staged.push(slot); renderThumbs();
@@ -284,8 +303,19 @@ $('targets').querySelectorAll('.opt').forEach(o=>o.onclick=()=>{
   $('capWrap').style.display = target==='story' ? 'none' : 'block';
 });
 
+function applyKind(){
+  $('dropText').textContent = postKind==='single' ? 'Tap to add a photo' : 'Tap to add photos';
+  $('dropHint').textContent = postKind==='single' ? 'One photo' : '2 to 10 photos';
+  if(postKind==='single' && staged.length>1){ staged = staged.slice(0,1); renderThumbs(); toast('Single post — kept the first photo'); }
+}
+$('postKind').querySelectorAll('.opt').forEach(o=>o.onclick=()=>{
+  $('postKind').querySelectorAll('.opt').forEach(x=>x.classList.remove('on')); o.classList.add('on'); postKind=o.dataset.k;
+  applyKind();
+});
+
 $('schedule').onclick=async()=>{
   if(!staged.length){ toast('Add at least one photo', false); return; }
+  if(postKind==='carousel' && staged.length<2){ toast('A carousel needs at least 2 photos (or switch to Single)', false); return; }
   if(staged.some(s=>s.uploading)){ toast('Photos still uploading — one sec', false); return; }
   if(staged.some(s=>!s.url)){ toast('A photo didn’t upload — remove it and retry', false); return; }
   if(!$('when').value){ toast('Pick a date & time', false); return; }
@@ -306,7 +336,7 @@ $('saveSettings').onclick=async()=>{
   catch(e){ toast(e.message,false); }
 };
 
-loadStatus(); loadLists();
+loadLogo(); loadStatus(); loadLists();
 setInterval(loadLists, 20000);
 </script>
 </body>
