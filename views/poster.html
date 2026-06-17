@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>MMP · Auto-Poster</title>
+<style>
+  :root{
+    --bg:#05070b; --text:#e9edf5; --muted:#8a93a6;
+    --blue:#3b82f6; --blue-bright:#6db8ff;
+    --green:#34d399; --amber:#f5b54a; --red:#f87171; --tile-border:#1f386c;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;min-height:100%}
+  body{
+    color:var(--text);
+    font:15px/1.55 'Segoe UI',system-ui,-apple-system,sans-serif;
+    background:
+      radial-gradient(1100px 650px at 74% -12%, rgba(60,110,200,0.24) 0%, rgba(5,7,11,0) 55%),
+      radial-gradient(820px 480px at 6% 2%, rgba(46,72,140,0.18) 0%, rgba(5,7,11,0) 52%),
+      linear-gradient(180deg,#0b0e15 0%,#05070b 100%);
+    background-attachment:fixed; padding:16px;
+  }
+  .wrap{max-width:680px;margin:0 auto}
+  .panel{
+    position:relative;border-radius:16px;padding:18px;margin-bottom:16px;
+    background:linear-gradient(180deg,#1c2433 0%,#131a28 48%,#0d121d 100%);
+    border:1px solid rgba(120,170,245,0.21);
+    box-shadow:0 18px 40px rgba(0,0,0,0.55), inset 0 1px 0 rgba(185,220,255,0.22)}
+  .head{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+  .head .left{display:flex;align-items:center;gap:13px}
+  .emblem{width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    font-size:20px;background:linear-gradient(180deg,#16233f,#0c1626);
+    border:1px solid rgba(120,170,245,0.45);box-shadow:0 0 18px rgba(59,130,246,0.30)}
+  .title{margin:0;font-size:20px;font-weight:800;
+    background:linear-gradient(180deg,#eaf6ff 0%,#8fd0ff 40%,#2f7fd6 53%,#6db8ff 64%,#dff1ff 100%);
+    -webkit-background-clip:text;background-clip:text;color:transparent}
+  .sub{font-size:12px;color:var(--muted);margin-top:3px}
+  .badge{display:inline-flex;align-items:center;gap:7px;padding:6px 12px;border-radius:9px;
+    font-weight:700;font-size:11px;letter-spacing:1px;text-transform:uppercase}
+  .badge.live{color:var(--green);background:rgba(52,211,153,0.10);border:1px solid rgba(52,211,153,0.4)}
+  .badge.warn{color:var(--amber);background:rgba(245,181,74,0.10);border:1px solid rgba(245,181,74,0.4)}
+  .dot{width:8px;height:8px;border-radius:50%;background:currentColor;box-shadow:0 0 9px currentColor}
+  .sec{margin:0 0 12px;font-size:16px;font-weight:800;color:#f0f7ff;border-left:3px solid var(--blue-bright);padding-left:11px}
+  .muted{color:var(--muted);font-size:12.5px}
+  label.f{display:block;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:#9db8e6;margin:0 0 7px}
+  input,textarea{width:100%;background:#081226;border:1px solid var(--tile-border);color:var(--text);
+    padding:12px 14px;border-radius:10px;font-size:16px;outline:none;font-family:inherit}
+  textarea{min-height:84px;resize:vertical}
+  input:focus,textarea:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(59,130,246,0.16)}
+  button{background:linear-gradient(180deg, rgba(70,160,255,0.30), rgba(50,130,240,0.12));
+    color:#eaf6ff;border:1px solid var(--tile-border);padding:12px 18px;border-radius:10px;
+    font-weight:700;cursor:pointer;font-size:15px}
+  button:active{transform:scale(.98)}
+  button.primary{background:linear-gradient(180deg,#3ddf9e,#1f9e72);color:#06241a;border-color:#34d399}
+  button.ghost{background:rgba(255,255,255,0.04)}
+  button.danger{color:#ffd9d9;border-color:rgba(248,113,113,0.4);background:rgba(248,113,113,0.08)}
+  button:disabled{opacity:.5}
+  .drop{border:2px dashed #2b4675;border-radius:14px;padding:24px;text-align:center;color:#9db8e6;
+    cursor:pointer;background:rgba(8,18,38,0.5)}
+  .drop.over{border-color:var(--blue);background:rgba(59,130,246,0.08)}
+  .thumbs{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+  .thumb{position:relative;width:78px;height:78px;border-radius:10px;overflow:hidden;border:1px solid var(--tile-border)}
+  .thumb img{width:100%;height:100%;object-fit:cover}
+  .thumb .x{position:absolute;top:3px;right:3px;width:22px;height:22px;border-radius:50%;border:none;
+    background:rgba(0,0,0,.7);color:#fff;font-size:13px;padding:0}
+  .thumb .n{position:absolute;bottom:0;left:0;background:rgba(0,0,0,.6);color:#cfe4ff;font-size:10px;padding:1px 5px;border-top-right-radius:6px}
+  .thumb .up{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(5,10,20,.6);font-size:11px;color:#cfe4ff}
+  .seg{display:flex;border:1px solid var(--tile-border);border-radius:10px;overflow:hidden;margin-bottom:4px}
+  .seg .opt{flex:1;text-align:center;padding:12px 8px;cursor:pointer;font-weight:700;font-size:14px;color:#9db8e6}
+  .seg .opt.on{background:linear-gradient(180deg, rgba(70,160,255,0.30), rgba(50,130,240,0.12));color:#eaf6ff}
+  .field{margin-top:16px}
+  .list{display:flex;flex-direction:column;gap:10px}
+  .item{display:flex;align-items:center;gap:12px;padding:11px 12px;border:1px solid var(--tile-border);border-radius:12px;background:rgba(8,18,38,0.5)}
+  .item .pic{width:50px;height:50px;border-radius:8px;object-fit:cover;border:1px solid var(--tile-border);flex:0 0 auto;background:#081226}
+  .item .meta{flex:1;min-width:0}
+  .item .meta .t{font-weight:700;color:#eaf3ff;font-size:13px}
+  .item .meta .d{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .item .act{display:flex;gap:6px;flex:0 0 auto}
+  .item .act button{padding:8px 11px;font-size:12px}
+  .pill{font-size:9.5px;letter-spacing:.6px;text-transform:uppercase;padding:3px 8px;border-radius:999px;font-weight:700}
+  .pill.feed{color:#a9dcff;background:rgba(59,130,246,.14);border:1px solid rgba(59,130,246,.4)}
+  .pill.story{color:#f5b54a;background:rgba(245,181,74,.12);border:1px solid rgba(245,181,74,.4)}
+  .pill.posted{color:var(--green);background:rgba(52,211,153,.12);border:1px solid rgba(52,211,153,.4)}
+  .pill.failed,.pill.missed{color:#ffb4b4;background:rgba(248,113,113,.12);border:1px solid rgba(248,113,113,.4)}
+  .pill.canceled{color:#9db8e6;background:rgba(120,150,200,.1);border:1px solid var(--tile-border)}
+  .notice{padding:12px 14px;border-radius:11px;font-size:13px;margin-bottom:14px;display:none}
+  .notice.warn{display:block;color:#ffe2b0;background:rgba(245,181,74,0.1);border:1px solid rgba(245,181,74,0.35)}
+  .daygroup{margin-bottom:14px}
+  .daylabel{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:#7fa6dd;margin:0 0 8px 2px;font-weight:700}
+  .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);padding:13px 22px;border-radius:11px;
+    font-weight:700;opacity:0;pointer-events:none;transition:opacity .25s;z-index:50;max-width:90vw;text-align:center}
+  .toast.show{opacity:1}
+  .toast.ok{background:linear-gradient(180deg,#3ddf9e,#1f9e72);color:#06241a}
+  .toast.err{background:rgba(248,113,113,.96);color:#3a0d0d}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="panel">
+    <div class="head">
+      <div class="left">
+        <div class="emblem">▶</div>
+        <div>
+          <h1 class="title">Auto-Poster</h1>
+          <div class="sub">Schedule photos to your feed &amp; story.</div>
+        </div>
+      </div>
+      <div id="statusBadge" class="badge warn"><span class="dot"></span> Checking…</div>
+    </div>
+  </div>
+
+  <div id="setupNotice" class="notice warn"></div>
+
+  <!-- CREATE -->
+  <div class="panel">
+    <div class="sec">New post</div>
+
+    <div id="drop" class="drop">
+      <div style="font-size:28px;margin-bottom:4px">＋</div>
+      Tap to add photos<br>
+      <span class="muted">1 photo = single post · 2–10 = carousel</span>
+    </div>
+    <input id="file" type="file" accept="image/*" multiple style="display:none" />
+    <div id="thumbs" class="thumbs"></div>
+
+    <div class="field">
+      <label class="f">Post to</label>
+      <div class="seg" id="targets">
+        <div class="opt on" data-t="feed">Feed</div>
+        <div class="opt" data-t="story">Story</div>
+        <div class="opt" data-t="both">Both</div>
+      </div>
+    </div>
+
+    <div class="field" id="capWrap">
+      <label class="f">Caption <span class="muted" style="text-transform:none;letter-spacing:0">(feed only)</span></label>
+      <textarea id="caption" placeholder="Write your caption…"></textarea>
+    </div>
+
+    <div class="field">
+      <label class="f">When</label>
+      <input id="when" type="datetime-local" />
+    </div>
+
+    <button id="schedule" class="primary" style="width:100%;margin-top:16px;padding:15px">Schedule it</button>
+  </div>
+
+  <!-- UPCOMING -->
+  <div class="panel">
+    <div class="sec">Scheduled</div>
+    <div id="upcoming"><div class="muted">Nothing scheduled yet.</div></div>
+  </div>
+
+  <!-- HISTORY -->
+  <div class="panel">
+    <div class="sec">History</div>
+    <div id="history" class="list"><div class="muted">Nothing posted yet.</div></div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div class="panel">
+    <div class="sec">Settings</div>
+    <label class="f">If my app was asleep, skip posts older than (hours)</label>
+    <div style="display:flex;gap:10px">
+      <input id="grace" type="number" min="0" step="1" style="max-width:120px" />
+      <button id="saveSettings">Save</button>
+    </div>
+    <div class="muted" style="margin-top:8px">Stops stale content from posting late. 0 = always post overdue ones.</div>
+  </div>
+
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let staged = [];      // [{preview, url, publicId, uploading}]
+let target = 'feed';
+
+function toast(m, ok=true){ const t=$('toast'); t.textContent=m; t.className='toast show '+(ok?'ok':'err'); setTimeout(()=>t.className='toast',2800); }
+async function api(p, opts){ const r=await fetch(p,opts); const j=await r.json().catch(()=>({})); if(!r.ok||j.ok===false) throw new Error(j.error||('HTTP '+r.status)); return j; }
+const fmtWhen=(iso)=> new Date(iso).toLocaleString([], {weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+const fmtTime=(iso)=> new Date(iso).toLocaleString([], {hour:'numeric',minute:'2-digit'});
+const dayKey=(iso)=>{ const d=new Date(iso); return d.toLocaleDateString([], {weekday:'long',month:'long',day:'numeric'}); };
+
+async function loadStatus(){
+  const s = await api('/api/poster/status');
+  const ready = s.instagramLive && s.photoStorage && s.scheduleStorage;
+  const b=$('statusBadge');
+  b.className='badge '+(ready?'live':'warn');
+  b.innerHTML='<span class="dot"></span> '+(ready?'Ready':'Needs setup');
+  const notes=[];
+  if(!s.instagramLive) notes.push('Instagram isn’t connected on the host yet.');
+  if(!s.photoStorage) notes.push('Photo storage (Cloudinary) isn’t set up yet.');
+  if(!s.scheduleStorage) notes.push('Schedule storage (Upstash) isn’t set up yet.');
+  const n=$('setupNotice');
+  if(notes.length){ n.className='notice warn'; n.innerHTML='⚠ '+notes.join('<br>⚠ '); } else n.className='notice';
+  if(s.settings) $('grace').value = s.settings.missedGraceHours ?? 6;
+}
+
+function readAsDataURL(f){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(f); }); }
+async function addFiles(files){
+  for(const f of files){
+    if(!f.type.startsWith('image/')) continue;
+    if(staged.length>=10){ toast('Max 10 photos per post', false); break; }
+    const preview = await readAsDataURL(f);
+    const slot = { preview, url:null, publicId:null, uploading:true };
+    staged.push(slot); renderThumbs();
+    try{
+      const up = await api('/api/poster/upload',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:f.name,data:preview})});
+      slot.url=up.url; slot.publicId=up.publicId; slot.uploading=false; renderThumbs();
+    }catch(e){ staged=staged.filter(x=>x!==slot); renderThumbs(); toast('Upload failed: '+e.message,false); }
+  }
+}
+function renderThumbs(){
+  $('thumbs').innerHTML = staged.map((s,i)=>(
+    '<div class="thumb"><img src="'+s.preview+'"><span class="n">'+(i+1)+'</span>'+
+    (s.uploading?'<div class="up">…</div>':'')+'<button class="x" data-i="'+i+'">×</button></div>'
+  )).join('');
+  $('thumbs').querySelectorAll('.x').forEach(b=>b.onclick=()=>{ staged.splice(+b.dataset.i,1); renderThumbs(); });
+}
+
+function itemHTML(p, kind){
+  const pic = p.media&&p.media[0]&&p.media[0].url ? '<img class="pic" src="'+p.media[0].url+'">' : '<div class="pic"></div>';
+  const tgt = (p.targets||[p.type]).map(t=>'<span class="pill '+(t==='story'?'story':'feed')+'">'+t+'</span>').join(' ');
+  const count = (p.media?p.media.length:0)+' photo'+((p.media&&p.media.length>1)?'s':'');
+  const cap = (p.caption||'').slice(0,60);
+  let right='';
+  if(kind==='upcoming'){
+    right='<div class="act"><button class="ghost" data-now="'+p.id+'">Post now</button><button class="danger" data-cancel="'+p.id+'">✕</button></div>';
+  }else{
+    const link = p.permalink ? ' <a href="'+p.permalink+'" target="_blank" style="color:var(--blue-bright);font-size:12px">view</a>' : '';
+    right='<div class="act"><span class="pill '+p.status+'">'+p.status+'</span>'+link+'</div>';
+  }
+  const err = p.error ? '<div class="d" style="color:#ffb4b4">'+p.error+'</div>' : '';
+  const sub = kind==='upcoming' ? (fmtTime(p.scheduledAt)+(cap?' · '+cap:'')) : (fmtWhen(p.scheduledAt)+(cap?' · '+cap:''));
+  return '<div class="item">'+pic+'<div class="meta"><div class="t">'+tgt+' &nbsp;'+count+'</div><div class="d">'+sub+'</div>'+err+'</div>'+right+'</div>';
+}
+
+async function loadLists(){
+  const d = await api('/api/poster/list');
+  // Upcoming grouped by day (a simple feed/calendar view)
+  const up = d.upcoming;
+  if(!up.length){ $('upcoming').innerHTML='<div class="muted">Nothing scheduled yet.</div>'; }
+  else{
+    const groups={};
+    for(const p of up){ (groups[dayKey(p.scheduledAt)] ||= []).push(p); }
+    $('upcoming').innerHTML = Object.entries(groups).map(([day,posts])=>(
+      '<div class="daygroup"><div class="daylabel">'+day+'</div><div class="list">'+posts.map(p=>itemHTML(p,'upcoming')).join('')+'</div></div>'
+    )).join('');
+  }
+  $('history').innerHTML = d.history.length ? d.history.map(p=>itemHTML(p,'history')).join('') : '<div class="muted">Nothing posted yet.</div>';
+
+  document.querySelectorAll('[data-cancel]').forEach(b=>b.onclick=async()=>{ try{ await api('/api/poster/cancel',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:b.dataset.cancel})}); toast('Canceled'); loadLists(); }catch(e){ toast(e.message,false);} });
+  document.querySelectorAll('[data-now]').forEach(b=>b.onclick=async()=>{ b.disabled=true; b.textContent='Posting…'; try{ const r=await fetch('/api/poster/publish-now',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:b.dataset.now})}); const j=await r.json(); toast(j.ok?'Posted! 🎉':(j.error||'Failed'), !!j.ok); }catch(e){ toast(e.message,false);} loadLists(); });
+}
+
+$('drop').onclick=()=>$('file').click();
+$('file').onchange=(e)=>{ addFiles([...e.target.files]); e.target.value=''; };
+['dragover','dragenter'].forEach(ev=>$('drop').addEventListener(ev,(e)=>{e.preventDefault();$('drop').classList.add('over');}));
+['dragleave','drop'].forEach(ev=>$('drop').addEventListener(ev,(e)=>{e.preventDefault();$('drop').classList.remove('over');}));
+$('drop').addEventListener('drop',(e)=>{ if(e.dataTransfer.files.length) addFiles([...e.dataTransfer.files]); });
+
+$('targets').querySelectorAll('.opt').forEach(o=>o.onclick=()=>{
+  $('targets').querySelectorAll('.opt').forEach(x=>x.classList.remove('on')); o.classList.add('on'); target=o.dataset.t;
+  $('capWrap').style.display = target==='story' ? 'none' : 'block';
+});
+
+$('schedule').onclick=async()=>{
+  if(!staged.length){ toast('Add at least one photo', false); return; }
+  if(staged.some(s=>s.uploading)){ toast('Photos still uploading — one sec', false); return; }
+  if(staged.some(s=>!s.url)){ toast('A photo didn’t upload — remove it and retry', false); return; }
+  if(!$('when').value){ toast('Pick a date & time', false); return; }
+  const targets = target==='both' ? ['feed','story'] : [target];
+  const type = targets.includes('feed') ? 'feed' : 'story';
+  const btn=$('schedule'); btn.disabled=true; btn.textContent='Scheduling…';
+  try{
+    await api('/api/poster/schedule',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ type, targets, media:staged.map(s=>({url:s.url,publicId:s.publicId})), caption:$('caption').value, scheduledAt:$('when').value })});
+    toast('Scheduled! ✅');
+    staged=[]; renderThumbs(); $('caption').value=''; $('when').value=''; loadLists();
+  }catch(e){ toast(e.message,false); }
+  btn.disabled=false; btn.textContent='Schedule it';
+};
+
+$('saveSettings').onclick=async()=>{
+  try{ await api('/api/poster/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({missedGraceHours:Number($('grace').value)||0})}); toast('Saved'); }
+  catch(e){ toast(e.message,false); }
+};
+
+loadStatus(); loadLists();
+setInterval(loadLists, 20000);
+</script>
+</body>
+</html>

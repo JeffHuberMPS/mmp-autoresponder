@@ -17,11 +17,13 @@ import {
   listConversations, getConversation, listLeads,
   getOffers, getKeywords, saveOffers, saveKeywords, runFollowups, getCommentAutomation,
 } from './services/autoresponder.js';
+import * as poster from './services/poster.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 app.use(cors());
-app.use(express.json({ verify: (req, _res, buf) => { req.rawBody = buf; } }));
+// Generous limit so the auto-poster can receive full-size photos (base64).
+app.use(express.json({ limit: '30mb', verify: (req, _res, buf) => { req.rawBody = buf; } }));
 
 const ok = (res, data) => res.json({ ok: true, ...data });
 const fail = (res, err, code = 500) => res.status(code).json({ ok: false, error: err?.message || String(err) });
@@ -116,13 +118,54 @@ app.get('/api/followups/run', async (req, res) => res.json(await runFollowups().
 app.post('/api/followups/run', async (req, res) => res.json(await runFollowups().catch((e) => ({ ran: false, error: e.message }))));
 setInterval(() => { runFollowups().catch((e) => console.error('⚠ followups:', e.message)); }, 30 * 60_000);
 
-// ── The visual Control Center page ──
+// ── Auto-Poster (schedule posts to feed + story) ──
+app.post('/api/poster/upload', async (req, res) => {
+  try {
+    const { name, data } = req.body || {};
+    ok(res, await poster.saveUpload(name, data));
+  } catch (err) { fail(res, err, 400); }
+});
+app.post('/api/poster/schedule', async (req, res) => {
+  try { ok(res, { post: await poster.schedulePost(req.body || {}) }); }
+  catch (err) { fail(res, err, 400); }
+});
+app.get('/api/poster/list', async (req, res) => {
+  try { ok(res, await poster.listPosts()); } catch (err) { fail(res, err); }
+});
+app.post('/api/poster/cancel', async (req, res) => {
+  try { ok(res, { post: await poster.cancelPost((req.body || {}).id) }); }
+  catch (err) { fail(res, err, 400); }
+});
+app.post('/api/poster/publish-now', async (req, res) => {
+  try { res.json(await poster.publishById((req.body || {}).id)); }
+  catch (err) { fail(res, err, 400); }
+});
+app.get('/api/poster/status', async (req, res) => {
+  try { ok(res, { ...poster.readiness(), settings: await poster.getSettings() }); }
+  catch (err) { ok(res, { ...poster.readiness(), settings: { missedGraceHours: 6 }, error: err.message }); }
+});
+app.get('/api/poster/settings', async (req, res) => {
+  try { ok(res, { settings: await poster.getSettings() }); } catch (err) { fail(res, err); }
+});
+app.post('/api/poster/settings', async (req, res) => {
+  try { ok(res, { settings: await poster.saveSettings(req.body || {}) }); }
+  catch (err) { fail(res, err, 400); }
+});
+// External pinger hits this every few minutes: wakes the host AND fires due posts.
+app.get('/api/poster/run', async (req, res) => res.json(await poster.runDuePosts().catch((e) => ({ ran: 0, error: e.message }))));
+app.post('/api/poster/run', async (req, res) => res.json(await poster.runDuePosts().catch((e) => ({ ran: 0, error: e.message }))));
+
+// ── The visual pages ──
 app.get('/ig', (req, res) => res.sendFile(path.join(__dirname, 'views', 'ig.html')));
 app.get('/autoresponder', (req, res) => res.sendFile(path.join(__dirname, 'views', 'ig.html')));
+app.get('/poster', (req, res) => res.sendFile(path.join(__dirname, 'views', 'poster.html')));
 
 app.listen(config.port, () => {
+  const r = poster.readiness();
   console.log(`\n  🤖  MMP Autoresponder online → port ${config.port}`);
   console.log(`      Instagram: ${instagramLive() ? 'LIVE' : 'test mode (no IG token)'}`);
+  console.log(`      Auto-Poster: photos ${r.photoStorage ? '✓' : '✗'}  schedule ${r.scheduleStorage ? '✓' : '✗'}`);
   if (!config.anthropicApiKey) console.log('      ⚠  ANTHROPIC_API_KEY not set');
   console.log('');
+  poster.startScheduler(); // backup timer; the external pinger is the primary trigger
 });

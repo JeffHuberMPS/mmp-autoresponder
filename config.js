@@ -22,4 +22,15 @@ export const config = {
   autoresponderFile: path.join(root, 'data', 'autoresponder.json'),
   conversationsFile: path.join(root, 'data', 'ig-conversations.json'),
   leadsFile: path.join(root, 'data', 'ig-leads.json'),
+
+  // ── Auto-Poster (schedule posts to feed + story) ──
+  // Cloudinary = free image hosting. It gives Instagram a public link to each
+  // photo (Instagram fetches images by URL; it can't read our server's disk).
+  cloudinaryCloudName: process.env.CLOUDINARY_CLOUD_NAME || '',
+  cloudinaryApiKey: process.env.CLOUDINARY_API_KEY || '',
+  cloudinaryApiSecret: process.env.CLOUDINARY_API_SECRET || '',
+  // Upstash Redis = free permanent storage for the schedule itself, so queued
+  // posts survive the free host restarting/sleeping.
+  upstashUrl: process.env.UPSTASH_REDIS_REST_URL || '',
+  upstashToken: process.env.UPSTASH_REDIS_REST_TOKEN || '',
 };
