@@ -11,102 +11,157 @@
 <meta name="apple-mobile-web-app-title" content="MMP" />
 <link rel="apple-touch-icon" href="/icon-180.png" />
 <style>
+  /* ── Exact Jarvis dashboard palette (matches the autoresponder) ── */
   :root{
     --bg:#05070b; --text:#e9edf5; --muted:#8a93a6;
-    --blue:#3b82f6; --blue-bright:#6db8ff;
-    --green:#34d399; --amber:#f5b54a; --red:#f87171; --tile-border:#1f386c;
+    --blue:#3b82f6; --blue-bright:#6db8ff; --sky:#7ec8ff; --sky-bright:#a9dcff;
+    --green:#34d399; --amber:#f5b54a; --red:#f87171;
+    --card:#0f2148; --tile-border:#1f386c;
   }
   *{box-sizing:border-box}
   html,body{margin:0;min-height:100%}
   body{
     color:var(--text);
-    font:15px/1.55 'Segoe UI',system-ui,-apple-system,sans-serif;
+    font:14.5px/1.55 'Segoe UI',system-ui,-apple-system,sans-serif;
+    /* identical Jarvis backdrop: faint grid + blue radial glows */
     background:
+      linear-gradient(rgba(96,156,245,0.038) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(96,156,245,0.038) 1px, transparent 1px),
       radial-gradient(1100px 650px at 74% -12%, rgba(60,110,200,0.24) 0%, rgba(5,7,11,0) 55%),
       radial-gradient(820px 480px at 6% 2%, rgba(46,72,140,0.18) 0%, rgba(5,7,11,0) 52%),
       linear-gradient(180deg,#0b0e15 0%,#05070b 100%);
-    background-attachment:fixed; padding:16px;
+    background-size:46px 46px,46px 46px,auto,auto,auto;
+    background-attachment:fixed; padding:24px;
   }
-  .wrap{max-width:680px;margin:0 auto}
+  @media(max-width:560px){ body{padding:14px} }
+  .wrap{max-width:860px;margin:0 auto}
+
+  /* ── two-tab nav (matches the autoresponder) ── */
+  .tabs{display:flex;gap:8px;margin-bottom:16px}
+  .tabs a{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;border-radius:11px;
+    text-decoration:none;font-weight:700;font-size:14px;color:#9db8e6;border:1px solid var(--tile-border);background:rgba(8,18,38,0.5)}
+  .tabs a svg{width:18px;height:18px;flex:0 0 auto}
+  .tabs a.on{color:#eaf6ff;background:linear-gradient(180deg, rgba(70,160,255,0.30), rgba(50,130,240,0.12));border-color:var(--blue)}
+
+  /* ── Jarvis glass panel (exact) ── */
   .panel{
-    position:relative;border-radius:16px;padding:18px;margin-bottom:16px;
-    background:linear-gradient(180deg,#1c2433 0%,#131a28 48%,#0d121d 100%);
+    position:relative;isolation:isolate;border-radius:16px;padding:20px;margin-bottom:18px;
+    background:
+      linear-gradient(180deg, rgba(150,205,255,0.13) 0%, rgba(135,190,255,0.03) 12%, rgba(120,185,255,0) 22%),
+      linear-gradient(180deg,#1c2433 0%,#131a28 48%,#0d121d 100%);
     border:1px solid rgba(120,170,245,0.21);
-    box-shadow:0 18px 40px rgba(0,0,0,0.55), inset 0 1px 0 rgba(185,220,255,0.22)}
-  .head{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
-  .head .left{display:flex;align-items:center;gap:13px}
-  .emblem{position:relative;overflow:hidden;width:48px;height:48px;border-radius:50%;flex:0 0 auto;
-    display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;letter-spacing:.5px;color:#e8c873;
-    background:linear-gradient(180deg,#1c1c1c,#000);
-    border:1px solid rgba(212,175,55,0.5);box-shadow:0 0 16px rgba(212,175,55,0.25)}
+    box-shadow:0 22px 48px rgba(0,0,0,0.6), 0 0 28px rgba(50,110,200,0.10),
+      inset 0 1px 0 rgba(185,220,255,0.32), inset 0 -1px 0 rgba(0,0,0,0.45);
+    transition:box-shadow .3s cubic-bezier(.2,.8,.2,1), border-color .3s, transform .3s}
+  .panel::before{content:'';position:absolute;inset:0;border-radius:16px;z-index:-1;pointer-events:none;
+    background:linear-gradient(118deg, rgba(165,210,255,0.11) 0%, rgba(150,200,255,0) 28%, rgba(120,180,255,0) 66%, rgba(100,170,255,0.07) 100%)}
+  .panel::after{content:'';position:absolute;left:10px;right:10px;top:0;height:1px;pointer-events:none;
+    background:linear-gradient(90deg, transparent, rgba(200,228,255,0.7), transparent)}
+  .panel:hover{border-color:rgba(120,175,255,0.4);
+    box-shadow:0 28px 60px rgba(0,0,0,0.7), 0 0 42px rgba(50,110,210,0.20), inset 0 1px 0 rgba(170,210,255,0.38), inset 0 -1px 0 rgba(0,0,0,0.5)}
+
+  /* ── header card: emblem (the MMP logo) ── */
+  .head{display:flex;align-items:center;justify-content:space-between;gap:22px;flex-wrap:wrap}
+  .head .left{display:flex;align-items:center;gap:16px}
+  .emblem{
+    width:54px;height:54px;border-radius:50%;flex:0 0 auto;position:relative;overflow:hidden;
+    display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;letter-spacing:.5px;color:#cfe4ff;
+    background:linear-gradient(180deg,#16233f,#0c1626);
+    border:1px solid rgba(120,170,245,0.45);
+    box-shadow:0 0 18px rgba(59,130,246,0.30), inset 0 1px 0 rgba(185,220,255,0.25)}
   .emblem img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:50%;display:none}
-  .title{margin:0;font-size:20px;font-weight:800;
+  .head .title{margin:0;font-size:21px;font-weight:800;letter-spacing:.3px;
     background:linear-gradient(180deg,#eaf6ff 0%,#8fd0ff 40%,#2f7fd6 53%,#6db8ff 64%,#dff1ff 100%);
-    -webkit-background-clip:text;background-clip:text;color:transparent}
-  .sub{font-size:12px;color:var(--muted);margin-top:3px}
-  .badge{display:inline-flex;align-items:center;gap:7px;padding:6px 12px;border-radius:9px;
-    font-weight:700;font-size:11px;letter-spacing:1px;text-transform:uppercase}
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    filter:drop-shadow(0 1px 1px rgba(0,0,0,0.55)) drop-shadow(0 0 12px rgba(80,160,255,0.45))}
+  .head .sub{font-size:12.5px;color:var(--muted);margin-top:4px;letter-spacing:.3px}
+  .badge{display:inline-flex;align-items:center;gap:8px;padding:7px 14px;border-radius:9px;
+    font-weight:700;font-size:11.5px;letter-spacing:1.2px;text-transform:uppercase}
   .badge.live{color:var(--green);background:rgba(52,211,153,0.10);border:1px solid rgba(52,211,153,0.4)}
   .badge.warn{color:var(--amber);background:rgba(245,181,74,0.10);border:1px solid rgba(245,181,74,0.4)}
   .dot{width:8px;height:8px;border-radius:50%;background:currentColor;box-shadow:0 0 9px currentColor}
-  .sec{margin:0 0 12px;font-size:16px;font-weight:800;color:#f0f7ff;border-left:3px solid var(--blue-bright);padding-left:11px}
-  .muted{color:var(--muted);font-size:12.5px}
-  label.f{display:block;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:#9db8e6;margin:0 0 7px}
+  .badge.live .dot{animation:ring 2.4s infinite}
+  @keyframes ring{0%{box-shadow:0 0 0 0 rgba(52,211,153,.5)}70%{box-shadow:0 0 0 6px rgba(52,211,153,0)}100%{box-shadow:0 0 0 0 rgba(52,211,153,0)}}
+
+  /* ── Jarvis section header: blue accent bar + glow ── */
+  .sec{margin:0 0 16px;font-size:18px;font-weight:800;letter-spacing:.3px;color:#f0f7ff;
+    border-left:3px solid var(--blue-bright);padding-left:12px;
+    text-shadow:0 1px 0 rgba(0,0,0,.5), 0 0 16px rgba(90,165,255,0.45)}
+  .muted{color:var(--muted);font-size:12.5px;line-height:1.5}
+  label.f{display:block;font-size:10.5px;letter-spacing:1px;text-transform:uppercase;color:#9db8e6;margin:0 0 7px}
+  .field{margin-top:16px}
+
+  /* ── inputs (exact Jarvis field look) ── */
   input,textarea{width:100%;background:#081226;border:1px solid var(--tile-border);color:var(--text);
-    padding:12px 14px;border-radius:10px;font-size:16px;outline:none;font-family:inherit}
-  textarea{min-height:84px;resize:vertical}
+    padding:12px 14px;border-radius:10px;font-size:15px;outline:none;font-family:inherit;transition:border .15s,box-shadow .15s}
+  input::placeholder,textarea::placeholder{color:#5a6b88}
+  textarea{min-height:84px;resize:vertical;line-height:1.55}
   input:focus,textarea:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(59,130,246,0.16)}
+
+  /* ── buttons ── */
   button{background:linear-gradient(180deg, rgba(70,160,255,0.30), rgba(50,130,240,0.12));
     color:#eaf6ff;border:1px solid var(--tile-border);padding:12px 18px;border-radius:10px;
-    font-weight:700;cursor:pointer;font-size:15px}
+    font-weight:700;cursor:pointer;font-size:14px;letter-spacing:.3px;
+    box-shadow:inset 0 1px 0 rgba(190,225,255,0.18);transition:.15s}
+  button:hover{border-color:var(--blue);box-shadow:0 0 14px rgba(59,155,255,0.4), inset 0 1px 0 rgba(200,230,255,0.3)}
   button:active{transform:scale(.98)}
   button.primary{background:linear-gradient(180deg,#3ddf9e,#1f9e72);color:#06241a;border-color:#34d399}
-  button.ghost{background:rgba(255,255,255,0.04)}
+  button.primary:hover{box-shadow:0 0 16px rgba(52,211,153,.45)}
+  button.ghost{background:rgba(120,200,255,0.06)}
   button.danger{color:#ffd9d9;border-color:rgba(248,113,113,0.4);background:rgba(248,113,113,0.08)}
-  button:disabled{opacity:.5}
-  .drop{border:2px dashed #2b4675;border-radius:14px;padding:24px;text-align:center;color:#9db8e6;
-    cursor:pointer;background:rgba(8,18,38,0.5)}
-  .drop.over{border-color:var(--blue);background:rgba(59,130,246,0.08)}
-  .thumbs{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
-  .thumb{position:relative;width:78px;height:78px;border-radius:10px;overflow:hidden;border:1px solid var(--tile-border)}
+  button.danger:hover{border-color:var(--red);box-shadow:0 0 12px rgba(248,113,113,.35)}
+  button:disabled{opacity:.5;cursor:not-allowed}
+
+  /* ── segmented toggles (single/carousel, feed/story/both) ── */
+  .seg{display:flex;border:1px solid var(--tile-border);border-radius:11px;overflow:hidden;background:rgba(8,18,38,0.5)}
+  .seg .opt{flex:1;text-align:center;padding:12px 8px;cursor:pointer;user-select:none;font-weight:700;font-size:14px;color:#9db8e6;transition:.15s}
+  .seg .opt.on{background:linear-gradient(180deg, rgba(70,160,255,0.30), rgba(50,130,240,0.12));color:#eaf6ff;
+    box-shadow:inset 0 1px 0 rgba(190,225,255,0.18)}
+
+  /* ── photo drop zone ── */
+  .drop{border:2px dashed #2b4675;border-radius:14px;padding:26px;text-align:center;color:#9db8e6;
+    cursor:pointer;background:rgba(8,18,38,0.45);transition:.15s}
+  .drop:hover,.drop.over{border-color:var(--blue);background:rgba(59,130,246,0.08);color:#cfe4ff}
+  .drop .plus{font-size:30px;line-height:1;margin-bottom:6px;
+    background:linear-gradient(180deg,#eaf6ff,#6db8ff);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .thumbs{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+  .thumb{position:relative;width:82px;height:82px;border-radius:10px;overflow:hidden;border:1px solid var(--tile-border)}
   .thumb img{width:100%;height:100%;object-fit:cover}
   .thumb .x{position:absolute;top:3px;right:3px;width:22px;height:22px;border-radius:50%;border:none;
-    background:rgba(0,0,0,.7);color:#fff;font-size:13px;padding:0}
-  .thumb .n{position:absolute;bottom:0;left:0;background:rgba(0,0,0,.6);color:#cfe4ff;font-size:10px;padding:1px 5px;border-top-right-radius:6px}
-  .thumb .up{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(5,10,20,.6);font-size:11px;color:#cfe4ff}
-  .seg{display:flex;border:1px solid var(--tile-border);border-radius:10px;overflow:hidden;margin-bottom:4px}
-  .seg .opt{flex:1;text-align:center;padding:12px 8px;cursor:pointer;font-weight:700;font-size:14px;color:#9db8e6}
-  .seg .opt.on{background:linear-gradient(180deg, rgba(70,160,255,0.30), rgba(50,130,240,0.12));color:#eaf6ff}
-  .field{margin-top:16px}
-  .list{display:flex;flex-direction:column;gap:10px}
-  .item{display:flex;align-items:center;gap:12px;padding:11px 12px;border:1px solid var(--tile-border);border-radius:12px;background:rgba(8,18,38,0.5)}
-  .item .pic{width:50px;height:50px;border-radius:8px;object-fit:cover;border:1px solid var(--tile-border);flex:0 0 auto;background:#081226}
+    background:rgba(0,0,0,.7);color:#fff;font-size:13px;line-height:1;padding:0;cursor:pointer}
+  .thumb .n{position:absolute;bottom:0;left:0;background:rgba(0,0,0,.6);color:#cfe4ff;font-size:10px;padding:1px 6px;border-top-right-radius:6px}
+  .thumb .up{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(5,10,20,.6);font-size:13px;color:#cfe4ff}
+
+  /* ── scheduled / history list ── */
+  .list{display:flex;flex-direction:column;gap:11px}
+  .daygroup{margin-bottom:16px}
+  .daygroup:last-child{margin-bottom:0}
+  .daylabel{font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:var(--blue-bright);margin:0 0 9px 2px;font-weight:800}
+  .item{display:flex;align-items:center;gap:13px;padding:12px 14px;border:1px solid var(--tile-border);border-radius:12px;
+    background:linear-gradient(180deg,#0e1a32,#0a1426)}
+  .item .pic{width:52px;height:52px;border-radius:9px;object-fit:cover;border:1px solid var(--tile-border);flex:0 0 auto;background:#081226}
   .item .meta{flex:1;min-width:0}
-  .item .meta .t{font-weight:700;color:#eaf3ff;font-size:13px}
-  .item .meta .d{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .item .act{display:flex;gap:6px;flex:0 0 auto}
-  .item .act button{padding:8px 11px;font-size:12px}
-  .pill{font-size:9.5px;letter-spacing:.6px;text-transform:uppercase;padding:3px 8px;border-radius:999px;font-weight:700}
-  .pill.feed{color:#a9dcff;background:rgba(59,130,246,.14);border:1px solid rgba(59,130,246,.4)}
-  .pill.story{color:#f5b54a;background:rgba(245,181,74,.12);border:1px solid rgba(245,181,74,.4)}
+  .item .meta .t{font-weight:700;color:#eaf3ff;font-size:13px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .item .meta .d{font-size:12px;color:var(--muted);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .item .act{display:flex;gap:6px;flex:0 0 auto;align-items:center}
+  .item .act button{padding:8px 12px;font-size:12px}
+  .pill{font-size:9.5px;letter-spacing:.7px;text-transform:uppercase;padding:3px 9px;border-radius:999px;font-weight:700}
+  .pill.feed{color:var(--blue-bright);background:rgba(109,184,255,.12);border:1px solid rgba(109,184,255,.4)}
+  .pill.story{color:var(--amber);background:rgba(245,181,74,.12);border:1px solid rgba(245,181,74,.4)}
   .pill.posted{color:var(--green);background:rgba(52,211,153,.12);border:1px solid rgba(52,211,153,.4)}
   .pill.failed,.pill.missed{color:#ffb4b4;background:rgba(248,113,113,.12);border:1px solid rgba(248,113,113,.4)}
   .pill.canceled{color:#9db8e6;background:rgba(120,150,200,.1);border:1px solid var(--tile-border)}
-  .notice{padding:12px 14px;border-radius:11px;font-size:13px;margin-bottom:14px;display:none}
+
+  .notice{padding:13px 16px;border-radius:12px;font-size:13px;margin-bottom:18px;display:none}
   .notice.warn{display:block;color:#ffe2b0;background:rgba(245,181,74,0.1);border:1px solid rgba(245,181,74,0.35)}
-  .daygroup{margin-bottom:14px}
-  .daylabel{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:#7fa6dd;margin:0 0 8px 2px;font-weight:700}
-  .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);padding:13px 22px;border-radius:11px;
-    font-weight:700;opacity:0;pointer-events:none;transition:opacity .25s;z-index:50;max-width:90vw;text-align:center}
+  .setrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+
+  .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);padding:13px 22px;border-radius:11px;
+    font-weight:700;opacity:0;pointer-events:none;transition:opacity .25s;z-index:50;max-width:90vw;text-align:center;
+    box-shadow:0 12px 30px rgba(0,0,0,.5)}
   .toast.show{opacity:1}
   .toast.ok{background:linear-gradient(180deg,#3ddf9e,#1f9e72);color:#06241a}
   .toast.err{background:rgba(248,113,113,.96);color:#3a0d0d}
-  /* two-tab nav so the autoresponder + scheduler feel like one app */
-  .tabs{display:flex;gap:8px;margin-bottom:16px}
-  .tabs a{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;border-radius:11px;text-decoration:none;font-weight:700;font-size:14px;
-    color:#9db8e6;border:1px solid var(--tile-border);background:rgba(8,18,38,0.5)}
-  .tabs a svg{width:18px;height:18px;flex:0 0 auto}
-  .tabs a.on{color:#eaf6ff;background:linear-gradient(180deg, rgba(70,160,255,0.30), rgba(50,130,240,0.12));border-color:var(--blue)}
 </style>
 </head>
 <body>
@@ -142,7 +197,7 @@
     </div>
 
     <div id="drop" class="drop">
-      <div style="font-size:28px;margin-bottom:4px">＋</div>
+      <div class="plus">＋</div>
       <span id="dropText">Tap to add a photo</span><br>
       <span class="muted" id="dropHint">One photo</span>
     </div>
@@ -168,7 +223,7 @@
       <input id="when" type="datetime-local" />
     </div>
 
-    <button id="schedule" class="primary" style="width:100%;margin-top:16px;padding:15px">Schedule it</button>
+    <button id="schedule" class="primary" style="width:100%;margin-top:18px;padding:15px">Schedule it</button>
   </div>
 
   <!-- UPCOMING -->
@@ -187,8 +242,8 @@
   <div class="panel">
     <div class="sec">Settings</div>
     <label class="f">If my app was asleep, skip posts older than (hours)</label>
-    <div style="display:flex;gap:10px">
-      <input id="grace" type="number" min="0" step="1" style="max-width:120px" />
+    <div class="setrow">
+      <input id="grace" type="number" min="0" step="1" style="max-width:130px" />
       <button id="saveSettings">Save</button>
     </div>
     <div class="muted" style="margin-top:8px">Stops stale content from posting late. 0 = always post overdue ones.</div>
@@ -216,7 +271,7 @@ async function loadLogo(){
   try{
     const m = await (await fetch('/api/instagram/metrics')).json();
     if(m && m.profilePic){ const im=$('emblemImg'); im.onload=()=>im.style.display='block'; im.src=m.profilePic; }
-  }catch{ /* falls back to the gold "MMP" text */ }
+  }catch{ /* falls back to the "MMP" text */ }
 }
 
 async function loadStatus(){
@@ -236,7 +291,6 @@ async function loadStatus(){
 
 function readAsDataURL(f){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(f); }); }
 async function addFiles(files){
-  // Single post = exactly one photo: a new pick replaces what's there.
   if(postKind === 'single'){ staged = []; files = [files[0]].filter(Boolean); }
   for(const f of files){
     if(!f.type.startsWith('image/')) continue;
@@ -272,12 +326,11 @@ function itemHTML(p, kind){
   }
   const err = p.error ? '<div class="d" style="color:#ffb4b4">'+p.error+'</div>' : '';
   const sub = kind==='upcoming' ? (fmtTime(p.scheduledAt)+(cap?' · '+cap:'')) : (fmtWhen(p.scheduledAt)+(cap?' · '+cap:''));
-  return '<div class="item">'+pic+'<div class="meta"><div class="t">'+tgt+' &nbsp;'+count+'</div><div class="d">'+sub+'</div>'+err+'</div>'+right+'</div>';
+  return '<div class="item">'+pic+'<div class="meta"><div class="t">'+tgt+'<span style="color:#c7d2e6;font-weight:700">'+count+'</span></div><div class="d">'+sub+'</div>'+err+'</div>'+right+'</div>';
 }
 
 async function loadLists(){
   const d = await api('/api/poster/list');
-  // Upcoming grouped by day (a simple feed/calendar view)
   const up = d.upcoming;
   if(!up.length){ $('upcoming').innerHTML='<div class="muted">Nothing scheduled yet.</div>'; }
   else{
@@ -287,7 +340,7 @@ async function loadLists(){
       '<div class="daygroup"><div class="daylabel">'+day+'</div><div class="list">'+posts.map(p=>itemHTML(p,'upcoming')).join('')+'</div></div>'
     )).join('');
   }
-  $('history').innerHTML = d.history.length ? d.history.map(p=>itemHTML(p,'history')).join('') : '<div class="muted">Nothing posted yet.</div>';
+  $('history').innerHTML = d.history.length ? '<div class="list">'+d.history.map(p=>itemHTML(p,'history')).join('')+'</div>' : '<div class="muted">Nothing posted yet.</div>';
 
   document.querySelectorAll('[data-cancel]').forEach(b=>b.onclick=async()=>{ try{ await api('/api/poster/cancel',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:b.dataset.cancel})}); toast('Canceled'); loadLists(); }catch(e){ toast(e.message,false);} });
   document.querySelectorAll('[data-now]').forEach(b=>b.onclick=async()=>{ b.disabled=true; b.textContent='Posting…'; try{ const r=await fetch('/api/poster/publish-now',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:b.dataset.now})}); const j=await r.json(); toast(j.ok?'Posted! 🎉':(j.error||'Failed'), !!j.ok); }catch(e){ toast(e.message,false);} loadLists(); });
