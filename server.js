@@ -18,6 +18,7 @@ import {
   getOffers, getKeywords, saveOffers, saveKeywords, runFollowups, getCommentAutomation,
 } from './services/autoresponder.js';
 import * as poster from './services/poster.js';
+import * as gphotos from './services/googlePhotos.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -141,8 +142,42 @@ app.post('/api/poster/publish-now', async (req, res) => {
   catch (err) { fail(res, err, 400); }
 });
 app.get('/api/poster/status', async (req, res) => {
-  try { ok(res, { ...poster.readiness(), settings: await poster.getSettings() }); }
-  catch (err) { ok(res, { ...poster.readiness(), settings: { missedGraceHours: 6 }, error: err.message }); }
+  try {
+    const googleConnected = await gphotos.googleConnected().catch(() => false);
+    ok(res, { ...poster.readiness(), googleConfigured: gphotos.googleConfigured(), googleConnected, settings: await poster.getSettings() });
+  } catch (err) {
+    ok(res, { ...poster.readiness(), settings: { missedGraceHours: 6 }, error: err.message });
+  }
+});
+
+// ── Google Photos (pull posts straight from Jeff's library) ──
+app.get('/api/google/auth', (req, res) => {
+  if (!gphotos.googleConfigured()) return fail(res, new Error('Google connection not set up on the host yet'), 400);
+  res.redirect(gphotos.authUrl());
+});
+app.get('/api/google/callback', async (req, res) => {
+  try {
+    if (req.query.error) return res.redirect('/poster?google=denied');
+    await gphotos.handleCallback(String(req.query.code || ''));
+    res.redirect('/poster?google=connected');
+  } catch (err) {
+    res.redirect('/poster?google=error');
+  }
+});
+app.post('/api/google/disconnect', async (req, res) => {
+  try { await gphotos.disconnect(); ok(res, { connected: false }); } catch (err) { fail(res, err); }
+});
+app.post('/api/google/picker/start', async (req, res) => {
+  try { ok(res, await gphotos.startPicker()); } catch (err) { fail(res, err, 400); }
+});
+app.get('/api/google/picker/poll', async (req, res) => {
+  try { ok(res, { ready: await gphotos.pollPicker(String(req.query.sessionId || '')) }); } catch (err) { fail(res, err, 400); }
+});
+app.post('/api/google/picker/import', async (req, res) => {
+  try {
+    const { sessionId, limit } = req.body || {};
+    ok(res, { media: await gphotos.importPicked(String(sessionId || ''), Number(limit) || 10) });
+  } catch (err) { fail(res, err, 400); }
 });
 app.get('/api/poster/settings', async (req, res) => {
   try { ok(res, { settings: await poster.getSettings() }); } catch (err) { fail(res, err); }

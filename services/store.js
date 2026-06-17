@@ -49,3 +49,20 @@ export async function saveData(data) {
   await redis(`set/${KEY}`, JSON.stringify(data));
   return data;
 }
+
+// Generic key-value (reused for the Google Photos login tokens).
+export async function kvGet(key) {
+  if (!storeConfigured()) return null;
+  const raw = await redis(`get/${encodeURIComponent(key)}`);
+  if (!raw) return null;
+  try { return JSON.parse(raw); } catch { return null; }
+}
+export async function kvSet(key, value) {
+  if (!storeConfigured()) throw new Error('Storage (Upstash) is not set up yet');
+  await redis(`set/${encodeURIComponent(key)}`, JSON.stringify(value));
+  return value;
+}
+export async function kvDel(key) {
+  if (!storeConfigured()) return;
+  await redis(`del/${encodeURIComponent(key)}`);
+}

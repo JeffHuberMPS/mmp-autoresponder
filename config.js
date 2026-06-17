@@ -33,4 +33,12 @@ export const config = {
   // posts survive the free host restarting/sleeping.
   upstashUrl: process.env.UPSTASH_REDIS_REST_URL || '',
   upstashToken: process.env.UPSTASH_REDIS_REST_TOKEN || '',
+
+  // Google Photos (where Jeff keeps his posts) — the Photos Picker API. He picks
+  // photos in Google's own picker; we pull the chosen ones straight in.
+  googleClientId: process.env.GOOGLE_CLIENT_ID || '',
+  googleClientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+  // Public URL of THIS app (for the OAuth redirect back). Falls back to the
+  // known Render URL if not set explicitly.
+  publicBaseUrl: process.env.PUBLIC_BASE_URL || 'https://mmp-autoresponder.onrender.com',
 };
