@@ -160,6 +160,28 @@ app.get('/ig', (req, res) => res.sendFile(path.join(__dirname, 'views', 'ig.html
 app.get('/autoresponder', (req, res) => res.sendFile(path.join(__dirname, 'views', 'ig.html')));
 app.get('/poster', (req, res) => res.sendFile(path.join(__dirname, 'views', 'poster.html')));
 
+// ── "Install on phone" support (PWA) — makes Add-to-Home-Screen give a real
+// full-screen app icon, so it feels like a native app. ──
+app.get('/manifest.webmanifest', (req, res) =>
+  res.type('application/manifest+json').json({
+    name: 'MMP Instagram',
+    short_name: 'MMP',
+    description: 'Auto-responder + post scheduler for Instagram',
+    start_url: '/poster',
+    scope: '/',
+    display: 'standalone',
+    background_color: '#05070b',
+    theme_color: '#0b0e15',
+    icons: [
+      { src: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
+    ],
+  })
+);
+for (const ic of ['icon-192.png', 'icon-512.png', 'icon-180.png']) {
+  app.get(`/${ic}`, (req, res) => res.sendFile(path.join(__dirname, 'views', ic)));
+}
+
 app.listen(config.port, () => {
   const r = poster.readiness();
   console.log(`\n  🤖  MMP Autoresponder online → port ${config.port}`);

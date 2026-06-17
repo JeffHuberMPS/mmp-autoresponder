@@ -4,6 +4,12 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>MMP · Auto-Poster</title>
+<link rel="manifest" href="/manifest.webmanifest" />
+<meta name="theme-color" content="#0b0e15" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="MMP" />
+<link rel="apple-touch-icon" href="/icon-180.png" />
 <style>
   :root{
     --bg:#05070b; --text:#e9edf5; --muted:#8a93a6;
@@ -93,10 +99,20 @@
   .toast.show{opacity:1}
   .toast.ok{background:linear-gradient(180deg,#3ddf9e,#1f9e72);color:#06241a}
   .toast.err{background:rgba(248,113,113,.96);color:#3a0d0d}
+  /* two-tab nav so the autoresponder + scheduler feel like one app */
+  .tabs{display:flex;gap:8px;margin-bottom:16px}
+  .tabs a{flex:1;text-align:center;padding:12px;border-radius:11px;text-decoration:none;font-weight:700;font-size:14px;
+    color:#9db8e6;border:1px solid var(--tile-border);background:rgba(8,18,38,0.5)}
+  .tabs a.on{color:#eaf6ff;background:linear-gradient(180deg, rgba(70,160,255,0.30), rgba(50,130,240,0.12));border-color:var(--blue)}
 </style>
 </head>
 <body>
 <div class="wrap">
+
+  <div class="tabs">
+    <a href="/ig">💬 Auto-Responder</a>
+    <a href="/poster" class="on">📸 Scheduler</a>
+  </div>
 
   <div class="panel">
     <div class="head">

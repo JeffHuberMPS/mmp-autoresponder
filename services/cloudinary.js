@@ -41,7 +41,19 @@ export async function uploadImage(dataUri, { folder = 'mmp-poster' } = {}) {
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok || !data.secure_url) throw new Error(data?.error?.message || `Cloudinary HTTP ${res.status}`);
-  return { url: data.secure_url, publicId: data.public_id, bytes: data.bytes, width: data.width, height: data.height };
+
+  // The link we hand Instagram. We do NOT resize — full resolution is preserved.
+  // If the upload is already a JPEG we pass the ORIGINAL bytes untouched (zero
+  // re-encoding). If it's any other format (iPhone HEIC, PNG, WebP…), Instagram
+  // won't accept it, so we deliver a JPEG at Cloudinary's best quality — same
+  // resolution, visually lossless. (Instagram then applies its own processing,
+  // exactly as it does for a photo you post in the app — no extra loss from us.)
+  const fmt = String(data.format || '').toLowerCase();
+  const url = (fmt === 'jpg' || fmt === 'jpeg')
+    ? data.secure_url
+    : data.secure_url.replace('/upload/', '/upload/q_auto:best/').replace(/\.[^./]+$/, '.jpg');
+
+  return { url, publicId: data.public_id, bytes: data.bytes, width: data.width, height: data.height, format: fmt };
 }
 
 // Best-effort cleanup of a photo after it's posted (keeps the free tier tidy).

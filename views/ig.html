@@ -2,8 +2,20 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>MMP · Instagram Control Center</title>
+<link rel="manifest" href="/manifest.webmanifest" />
+<meta name="theme-color" content="#0b0e15" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="MMP" />
+<link rel="apple-touch-icon" href="/icon-180.png" />
+<style>
+  .tabs{display:flex;gap:8px;margin-bottom:16px;max-width:1100px;margin-left:auto;margin-right:auto}
+  .tabs a{flex:1;text-align:center;padding:12px;border-radius:11px;text-decoration:none;font-weight:700;font-size:14px;
+    color:#9db8e6;border:1px solid #1f386c;background:rgba(8,18,38,0.5)}
+  .tabs a.on{color:#eaf6ff;background:linear-gradient(180deg, rgba(70,160,255,0.30), rgba(50,130,240,0.12));border-color:#3b82f6}
+</style>
 <style>
   /* ── Exact Jarvis dashboard palette (client/src/styles.css) ── */
   :root{
@@ -187,6 +199,10 @@
 </style>
 </head>
 <body>
+<div class="tabs">
+  <a href="/ig" class="on">💬 Auto-Responder</a>
+  <a href="/poster">📸 Scheduler</a>
+</div>
 <div class="wrap">
   <!-- single merged header: ONE emblem = the real MMP logo -->
   <div class="panel head">
