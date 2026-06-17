@@ -11,6 +11,11 @@
 <meta name="apple-mobile-web-app-title" content="MMP" />
 <link rel="apple-touch-icon" href="/icon-180.png" />
 <style>
+  /* Smooth whole-page cross-fade when switching tabs (/ig <-> /poster). Root
+     only — NO per-element view-transition-name, so nothing morphs/streaks; the
+     gold logo sits in the same spot on both pages and stays rock-steady. */
+  @view-transition{ navigation: auto; }
+  ::view-transition-old(root),::view-transition-new(root){ animation-duration:.3s; animation-timing-function:ease }
   /* ── Exact Jarvis dashboard palette (matches the autoresponder) ── */
   :root{
     --bg:#05070b; --text:#e9edf5; --muted:#8a93a6;
