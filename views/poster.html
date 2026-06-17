@@ -10,7 +10,12 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="apple-mobile-web-app-title" content="MMP" />
 <link rel="apple-touch-icon" href="/icon-180.png" />
+<script>/* When embedded as the Scheduler tab inside /ig, hide our own header + tabs so
+  the parent page's MMP logo header stays put (no reload, no logo blink). */
+  if(new URLSearchParams(location.search).get('embed')==='1'){document.documentElement.classList.add('embed');}</script>
 <style>
+  html.embed .tabs, html.embed .head{display:none!important}
+  html.embed body{padding-top:12px}
   /* Smooth whole-page cross-fade when switching tabs (/ig <-> /poster). Root
      only — NO per-element view-transition-name, so nothing morphs/streaks; the
      gold logo sits in the same spot on both pages and stays rock-steady. */

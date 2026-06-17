@@ -207,8 +207,8 @@
 </head>
 <body>
 <div class="tabs">
-  <a href="/ig" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9 9 0 0 1-3.8-.8L3 20.5l1.4-4.6A8.4 8.4 0 0 1 3.6 11 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/><path d="M8.5 11.5h.01M12 11.5h.01M15.5 11.5h.01"/></svg>Auto-Responder</a>
-  <a href="/poster"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="5.4"/><circle cx="12" cy="12" r="4"/><circle cx="17.4" cy="6.6" r="1.1" fill="currentColor" stroke="none"/></svg>Scheduler</a>
+  <a href="/ig" id="tabAR" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9 9 0 0 1-3.8-.8L3 20.5l1.4-4.6A8.4 8.4 0 0 1 3.6 11 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/><path d="M8.5 11.5h.01M12 11.5h.01M15.5 11.5h.01"/></svg>Auto-Responder</a>
+  <a href="/poster" id="tabSched"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="5.4"/><circle cx="12" cy="12" r="4"/><circle cx="17.4" cy="6.6" r="1.1" fill="currentColor" stroke="none"/></svg>Scheduler</a>
 </div>
 <div class="wrap">
   <!-- single merged header: ONE emblem = the real MMP logo -->
@@ -229,6 +229,8 @@
     </div>
   </div>
 
+  <!-- Auto-Responder content (swapped in/out in-page — header above never reloads) -->
+  <div id="arView">
   <div class="sec">Real Instagram numbers</div>
   <div class="tiles">
     <div class="tile"><div class="num" id="mFollowers">—</div><div class="lbl">Followers</div></div>
@@ -322,7 +324,27 @@
   </div>
 
   <div class="foot">Live · refreshes every 5 seconds · <span id="clock"></span></div>
+  </div><!-- /arView -->
+
+  <!-- Scheduler loads in-page here (its own header hidden) so switching tabs
+       never reloads the logo above. -->
+  <iframe id="schedView" title="Scheduler" style="display:none;width:100%;border:0;min-height:78vh;background:transparent"></iframe>
 </div>
+
+<script>
+/* In-page tab switch: no navigation, so the MMP logo header never reloads or blinks. */
+(function(){
+  var arView=document.getElementById('arView'), sched=document.getElementById('schedView');
+  var tA=document.getElementById('tabAR'), tS=document.getElementById('tabSched');
+  var loaded=false;
+  function sizeFrame(){ try{ sched.style.height=sched.contentWindow.document.body.scrollHeight+'px'; }catch(e){} }
+  sched.addEventListener('load', function(){ sizeFrame(); setTimeout(sizeFrame,400); setTimeout(sizeFrame,1200); });
+  function showAR(){ sched.style.display='none'; arView.style.display=''; tA.classList.add('on'); tS.classList.remove('on'); }
+  function showSched(){ if(!loaded){ sched.src='/poster?embed=1'; loaded=true; } arView.style.display='none'; sched.style.display='block'; tS.classList.add('on'); tA.classList.remove('on'); sizeFrame(); }
+  tA.addEventListener('click', function(e){ e.preventDefault(); showAR(); });
+  tS.addEventListener('click', function(e){ e.preventDefault(); showSched(); });
+})();
+</script>
 
 <script>
 const $ = (id) => document.getElementById(id);
