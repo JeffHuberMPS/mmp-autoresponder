@@ -180,7 +180,7 @@
   <div class="panel">
     <div class="head">
       <div class="left">
-        <div class="emblem"><span>MMP</span><img id="emblemImg" alt="MMP logo" /></div>
+        <div class="emblem"><span>MMP</span><img id="emblemImg" src="/mmp-logo.jpg" alt="MMP" style="display:block" /></div>
         <div>
           <h1 class="title">Auto-Poster</h1>
           <div class="sub">Schedule photos to your feed &amp; story.</div>
@@ -461,7 +461,7 @@ else if(_qp.get('google')==='denied') toast('Google sign-in was cancelled', fals
 else if(_qp.get('google')==='error') toast('Google sign-in failed — try again', false);
 if(_qp.get('google')) history.replaceState({}, '', '/poster');
 
-loadLogo(); loadStatus(); loadLists();
+loadStatus(); loadLists();
 setInterval(loadLists, 20000);
 </script>
 </body>

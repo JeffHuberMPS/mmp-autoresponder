@@ -213,7 +213,7 @@ app.get('/manifest.webmanifest', (req, res) =>
     ],
   })
 );
-for (const ic of ['icon-192.png', 'icon-512.png', 'icon-180.png']) {
+for (const ic of ['icon-192.png', 'icon-512.png', 'icon-180.png', 'mmp-logo.jpg']) {
   app.get(`/${ic}`, (req, res) => res.sendFile(path.join(__dirname, 'views', ic)));
 }
 

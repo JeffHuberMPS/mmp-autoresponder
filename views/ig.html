@@ -210,7 +210,7 @@
   <!-- single merged header: ONE emblem = the real MMP logo -->
   <div class="panel head">
     <div class="left">
-      <div class="emblem"><span>MMP</span><img id="emblemImg" alt="MMP logo" /></div>
+      <div class="emblem"><span>MMP</span><img id="emblemImg" src="/mmp-logo.jpg" alt="MMP" style="display:block" /></div>
       <div>
         <div class="title">Instagram Control Center</div>
         <div class="acctline"><a id="acctLink" class="acct-link" href="https://instagram.com/modern.man.protocol" target="_blank" rel="noopener"><b id="acctName">@—</b></a> <span id="acctSub">· —</span></div>
@@ -336,7 +336,7 @@ async function refreshStatus(){
 async function refreshMetrics(){
   const m = await jget('/api/instagram/metrics');
   if(!m || !m.connected) return;
-  if(m.profilePic){ const im=$('emblemImg'); if(im.getAttribute('src')!==m.profilePic){ im.onload=()=>{im.style.display='block'}; im.onerror=()=>{im.style.display='none'}; im.setAttribute('src', m.profilePic); } }
+  /* MMP logo is a built-in static image (/mmp-logo.jpg) set in the HTML — no remote swap, so it never flashes when switching tabs. */
   $('acctName').textContent = '@'+(m.username||'—');
   if(m.username){ const lk=$('acctLink'); if(lk) lk.href='https://instagram.com/'+m.username; }
   const type = m.accountType? m.accountType.charAt(0)+m.accountType.slice(1).toLowerCase() : '';
