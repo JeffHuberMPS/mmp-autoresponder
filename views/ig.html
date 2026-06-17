@@ -11,11 +11,7 @@
 <meta name="apple-mobile-web-app-title" content="MMP" />
 <link rel="apple-touch-icon" href="/icon-180.png" />
 <style>
-  /* Cross-document view transition: switching tabs (/ig <-> /poster) cross-fades
-     smoothly and the emblem + tab bar are SHARED elements that morph in place
-     instead of blinking out — zero glitch on the gold ring. */
-  @view-transition{ navigation: auto; }
-  .tabs{display:flex;gap:8px;margin-bottom:16px;max-width:1100px;margin-left:auto;margin-right:auto;view-transition-name:mmp-tabs}
+  .tabs{display:flex;gap:8px;margin-bottom:16px;max-width:1100px;margin-left:auto;margin-right:auto}
   .tabs a{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;border-radius:11px;text-decoration:none;font-weight:700;font-size:14px;
     color:#9db8e6;border:1px solid #1f386c;background:rgba(8,18,38,0.5)}
   .tabs a svg{width:18px;height:18px;flex:0 0 auto}
@@ -73,7 +69,7 @@
     display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;letter-spacing:.5px;color:#f3c64b;
     background:radial-gradient(circle at 50% 38%, #15120a 0%, #000 100%);
     border:1px solid rgba(214,170,70,0.6);
-    box-shadow:0 0 16px rgba(196,150,40,0.28), inset 0 1px 0 rgba(255,225,150,0.18);view-transition-name:mmp-logo}
+    box-shadow:0 0 16px rgba(196,150,40,0.28), inset 0 1px 0 rgba(255,225,150,0.18)}
   .emblem img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:50%;display:none}
   /* Jarvis blue-chrome wordmark treatment for the title */
   .head .title{margin:0;font-size:21px;font-weight:800;letter-spacing:.3px;
