@@ -313,6 +313,7 @@ async function loadLogo(attempt=0){
 let gConnected=false, gConfigured=false;
 async function loadStatus(){
   const s = await api('/api/poster/status');
+  if(!s){ return; } // no response yet — stay neutral, never flash amber
   const ready = s.instagramLive && s.photoStorage && s.scheduleStorage;
   const b=$('statusBadge');
   b.className='badge '+(ready?'live':'warn');

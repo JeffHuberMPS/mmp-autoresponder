@@ -355,9 +355,10 @@ async function jpost(u,b){ try{ const r = await fetch(u,{method:'POST',headers:{
 async function refreshStatus(){
   const s = await jget('/api/autoresponder/status');
   const badge = $('statusBadge'), txt = $('statusText');
-  if(s && s.instagramLive){ badge.className='badge live'; txt.textContent='Live'; }
+  if(!s){ return; } // no response yet — stay neutral "connecting", never flash amber
+  if(s.instagramLive){ badge.className='badge live'; txt.textContent='Live'; }
   else { badge.className='badge test'; txt.textContent='Test mode'; }
-  if(s) $('enabledToggle').checked = !!s.enabled;
+  $('enabledToggle').checked = !!s.enabled;
 }
 async function refreshMetrics(){
   const m = await jget('/api/instagram/metrics');
