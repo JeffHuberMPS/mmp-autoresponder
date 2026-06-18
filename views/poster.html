@@ -135,10 +135,11 @@
     box-shadow:inset 0 1px 0 rgba(190,225,255,0.18)}
 
   /* ── photo drop zone ── */
-  .drop{border:2px dashed #2b4675;border-radius:14px;padding:26px;text-align:center;color:#9db8e6;
-    cursor:pointer;background:rgba(8,18,38,0.45);transition:.15s}
+  /* secondary upload: a slim line, not a big box — Google Photos is the primary */
+  .drop{border:1px dashed #2b4675;border-radius:10px;padding:11px 16px;text-align:center;color:#8aa0c6;font-size:13px;
+    cursor:pointer;background:rgba(8,18,38,0.35);transition:.15s}
   .drop:hover,.drop.over{border-color:var(--blue);background:rgba(59,130,246,0.08);color:#cfe4ff}
-  .drop .plus{font-size:30px;line-height:1;margin-bottom:6px;
+  .drop .plus{font-size:15px;line-height:1;margin:0 5px 0 0;display:inline;
     background:linear-gradient(180deg,#eaf6ff,#6db8ff);-webkit-background-clip:text;background-clip:text;color:transparent}
   .thumbs{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
   .thumb{position:relative;width:82px;height:82px;border-radius:10px;overflow:hidden;border:1px solid var(--tile-border)}
@@ -213,16 +214,14 @@
           <div class="opt" data-k="carousel">Carousel</div>
         </div>
 
-        <button id="gpBtn" type="button" style="display:none;width:100%;margin-top:14px;align-items:center;justify-content:center;gap:9px;padding:14px">
+        <button id="gpBtn" type="button" style="display:none;width:100%;margin-top:14px;align-items:center;justify-content:center;gap:10px;padding:18px;font-size:16px;font-weight:800;box-shadow:0 0 0 1px rgba(109,184,255,0.35), 0 10px 26px rgba(0,0,0,0.4), 0 0 22px rgba(59,155,255,0.35)">
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.6"/><path d="M21 15l-5-5L5 21"/></svg>
           <span id="gpLabel">Add from Google Photos</span>
         </button>
         <div id="gpHint" class="muted" style="margin-top:8px;text-align:center"></div>
 
-        <div id="drop" class="drop" style="margin-top:14px">
-          <div class="plus">＋</div>
-          <span id="dropText">Tap to add a photo</span><br>
-          <span class="muted" id="dropHint">or upload from this device</span>
+        <div id="drop" class="drop" style="margin-top:10px">
+          <span class="plus">＋</span><span id="dropText">Upload from your computer</span><span class="muted" id="dropHint"></span>
         </div>
         <input id="file" type="file" accept="image/*" multiple style="display:none" />
         <div id="thumbs" class="thumbs"></div>
@@ -440,7 +439,7 @@ $('targets').querySelectorAll('.opt').forEach(o=>o.onclick=()=>{
 });
 
 function applyKind(){
-  $('dropText').textContent = postKind==='single' ? 'Tap to add a photo' : 'Tap to add photos';
+  $('dropText').textContent = postKind==='single' ? 'Upload from your computer' : 'Upload photos from your computer';
   $('dropHint').textContent = postKind==='single' ? 'One photo' : '2 to 10 photos';
   if(postKind==='single' && staged.length>1){ staged = staged.slice(0,1); renderThumbs(); toast('Single post — kept the first photo'); }
 }
