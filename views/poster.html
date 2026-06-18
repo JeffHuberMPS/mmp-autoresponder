@@ -340,17 +340,23 @@ function updateGoogleBtn(){
 
 async function addFromGoogle(){
   const b=$('gpBtn'), lab=$('gpLabel');
+  // Open the picker tab NOW (inside the click) so we keep a handle we can close.
+  const picker = window.open('about:blank','_blank');
   try{
     b.disabled=true; lab.textContent='Opening Google Photos…';
     const s = await api('/api/google/picker/start',{method:'POST'});
-    window.open(s.pickerUri, '_blank');
+    if(picker){ picker.location.href = s.pickerUri; } else { window.open(s.pickerUri,'_blank'); }
     lab.textContent='Waiting for your photos…';
     const deadline = Date.now()+3*60*1000; let ready=false;
     while(Date.now()<deadline){
-      await new Promise(r=>setTimeout(r, s.pollMs||2500));
+      await new Promise(r=>setTimeout(r, 1200));
       try{ const p=await api('/api/google/picker/poll?sessionId='+encodeURIComponent(s.sessionId)); if(p.ready){ ready=true; break; } }catch{ /* keep polling */ }
+      if(picker && picker.closed) break; // you closed it yourself
     }
-    if(!ready){ toast('Didn’t get your pick in time — try again', false); return; }
+    // The instant you finish picking: close the Google tab and come straight back here.
+    try{ if(picker && !picker.closed) picker.close(); }catch{}
+    try{ window.focus(); }catch{}
+    if(!ready){ toast('Didn’t get your pick — tap Add again', false); return; }
     lab.textContent='Pulling them in…';
     if(postKind==='single') staged=[];
     const remaining = postKind==='single' ? 1 : Math.max(0, 10 - staged.length);
