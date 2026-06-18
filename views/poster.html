@@ -16,6 +16,7 @@
 <style>
   html.embed .tabs, html.embed .head{display:none!important}
   html.embed body{padding-top:12px}
+  html.embed #setupNotice{display:none!important} /* no orange setup bar inside the Scheduler tab */
   /* Smooth whole-page cross-fade when switching tabs (/ig <-> /poster). Root
      only — NO per-element view-transition-name, so nothing morphs/streaks; the
      gold logo sits in the same spot on both pages and stays rock-steady. */
@@ -168,7 +169,7 @@
   .pill.canceled{color:#9db8e6;background:rgba(120,150,200,.1);border:1px solid var(--tile-border)}
 
   .notice{padding:13px 16px;border-radius:12px;font-size:13px;margin-bottom:18px;display:none}
-  .notice.warn{display:block;color:#ffe2b0;background:rgba(245,181,74,0.1);border:1px solid rgba(245,181,74,0.35)}
+  .notice.warn{display:block;color:#cfe0f5;background:rgba(59,130,246,0.10);border:1px solid rgba(59,130,246,0.35)}
   .setrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 
   .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);padding:13px 22px;border-radius:11px;
@@ -192,7 +193,7 @@
       <div class="left">
         <div class="emblem"><span>MMP</span><img id="emblemImg" src="/mmp-logo.jpg" alt="MMP" style="display:block" /></div>
         <div>
-          <h1 class="title">Auto-Poster</h1>
+          <h1 class="title">Scheduler</h1>
           <div class="sub">Schedule photos to your feed &amp; story.</div>
         </div>
       </div>
@@ -200,7 +201,7 @@
     </div>
   </div>
 
-  <div id="setupNotice" class="notice warn"></div>
+  <div id="setupNotice" class="notice"></div>
 
   <!-- CREATE -->
   <div class="panel">

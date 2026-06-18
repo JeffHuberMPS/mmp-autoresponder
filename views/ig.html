@@ -216,7 +216,7 @@
     <div class="left">
       <div class="emblem"><span>MMP</span><img id="emblemImg" src="/mmp-logo.jpg" alt="MMP" style="display:block" /></div>
       <div>
-        <div class="title">Instagram Control Center</div>
+        <div class="title">Auto-Responder</div>
         <div class="acctline"><a id="acctLink" class="acct-link" href="https://instagram.com/modern.man.protocol" target="_blank" rel="noopener"><b id="acctName">@—</b></a> <span id="acctSub">· —</span></div>
       </div>
     </div>
@@ -336,11 +336,18 @@
 (function(){
   var arView=document.getElementById('arView'), sched=document.getElementById('schedView');
   var tA=document.getElementById('tabAR'), tS=document.getElementById('tabSched');
-  var loaded=false;
-  function sizeFrame(){ try{ sched.style.height=sched.contentWindow.document.body.scrollHeight+'px'; }catch(e){} }
-  sched.addEventListener('load', function(){ sizeFrame(); setTimeout(sizeFrame,400); setTimeout(sizeFrame,1200); });
-  function showAR(){ sched.style.display='none'; arView.style.display=''; tA.classList.add('on'); tS.classList.remove('on'); }
-  function showSched(){ if(!loaded){ sched.src='/poster?embed=1'; loaded=true; } arView.style.display='none'; sched.style.display='block'; tS.classList.add('on'); tA.classList.remove('on'); sizeFrame(); }
+  var titleEl=document.querySelector('.head .title');
+  var loaded=false, ro=null;
+  // Size the scheduler frame to its FULL content height so it has no inner
+  // scrollbar — the outer page scrolls natively = buttery smooth, no nested lag.
+  function sizeFrame(){ try{ var h=sched.contentWindow.document.documentElement.scrollHeight; if(h>50) sched.style.height=h+'px'; }catch(e){} }
+  sched.addEventListener('load', function(){
+    sizeFrame();
+    try{ var d=sched.contentWindow.document; if(ro) ro.disconnect(); ro=new ResizeObserver(sizeFrame); ro.observe(d.documentElement); ro.observe(d.body); }catch(e){}
+    setTimeout(sizeFrame,300); setTimeout(sizeFrame,900); setTimeout(sizeFrame,2000);
+  });
+  function showAR(){ sched.style.display='none'; arView.style.display=''; tA.classList.add('on'); tS.classList.remove('on'); if(titleEl) titleEl.textContent='Auto-Responder'; }
+  function showSched(){ if(!loaded){ sched.src='/poster?embed=1'; loaded=true; } arView.style.display='none'; sched.style.display='block'; tS.classList.add('on'); tA.classList.remove('on'); if(titleEl) titleEl.textContent='Scheduler'; sizeFrame(); }
   tA.addEventListener('click', function(e){ e.preventDefault(); showAR(); });
   tS.addEventListener('click', function(e){ e.preventDefault(); showSched(); });
 })();
