@@ -328,7 +328,7 @@
 
   <!-- Scheduler loads in-page here (its own header hidden) so switching tabs
        never reloads the logo above. -->
-  <iframe id="schedView" title="Scheduler" style="display:none;width:100%;border:0;min-height:78vh;background:transparent"></iframe>
+  <iframe id="schedView" title="Scheduler" style="display:none;width:100%;border:0;min-height:78vh;background:#0d121d"></iframe>
 </div>
 
 <script>
@@ -337,7 +337,7 @@
   var arView=document.getElementById('arView'), sched=document.getElementById('schedView');
   var tA=document.getElementById('tabAR'), tS=document.getElementById('tabSched');
   var titleEl=document.querySelector('.head .title');
-  var loaded=false, ro=null;
+  var ro=null;
   // Size the scheduler frame to its FULL content height so it has no inner
   // scrollbar — the outer page scrolls natively = buttery smooth, no nested lag.
   function sizeFrame(){ try{ var h=sched.contentWindow.document.documentElement.scrollHeight; if(h>50) sched.style.height=h+'px'; }catch(e){} }
@@ -346,8 +346,11 @@
     try{ var d=sched.contentWindow.document; if(ro) ro.disconnect(); ro=new ResizeObserver(sizeFrame); ro.observe(d.documentElement); ro.observe(d.body); }catch(e){}
     setTimeout(sizeFrame,300); setTimeout(sizeFrame,900); setTimeout(sizeFrame,2000);
   });
+  // PRELOAD the scheduler in the background the moment the Control Center opens,
+  // so switching to it is INSTANT — no first-click loading glitch.
+  sched.src='/poster?embed=1';
   function showAR(){ sched.style.display='none'; arView.style.display=''; tA.classList.add('on'); tS.classList.remove('on'); if(titleEl) titleEl.textContent='Auto-Responder'; }
-  function showSched(){ if(!loaded){ sched.src='/poster?embed=1'; loaded=true; } arView.style.display='none'; sched.style.display='block'; tS.classList.add('on'); tA.classList.remove('on'); if(titleEl) titleEl.textContent='Scheduler'; sizeFrame(); }
+  function showSched(){ arView.style.display='none'; sched.style.display='block'; tS.classList.add('on'); tA.classList.remove('on'); if(titleEl) titleEl.textContent='Scheduler'; sizeFrame(); }
   tA.addEventListener('click', function(e){ e.preventDefault(); showAR(); });
   tS.addEventListener('click', function(e){ e.preventDefault(); showSched(); });
 })();
