@@ -107,15 +107,34 @@ export async function diagnose(imageUrl) {
 }
 
 // Instagram ingests the photo asynchronously — wait until FINISHED before publishing.
-async function waitForContainer(id, tries = 12) {
+// CRITICAL: never return until it's actually FINISHED. If we gave up early and let
+// the caller publish a still-processing container, Instagram answers "The requested
+// resource does not exist" — which looks like a failure even though nothing was wrong
+// but our patience. Carousels (the parent + each child) and cold free-tier hosts can
+// take well over 30s, so we wait up to ~2.5 min and tolerate brief "not found yet" blips.
+async function waitForContainer(id, tries = 60) {
+  let blips = 0;
   for (let i = 0; i < tries; i++) {
-    const d = await graphGet(`${GRAPH}/${id}?fields=status_code,status&access_token=${encodeURIComponent(config.igAccessToken)}`);
+    let d;
+    try {
+      d = await graphGet(`${GRAPH}/${id}?fields=status_code,status&access_token=${encodeURIComponent(config.igAccessToken)}`);
+    } catch (e) {
+      // A just-created container can be momentarily un-queryable. Tolerate a few.
+      if (/does not exist|not available|temporarily|try again/i.test(e.message || '') && blips < 8) {
+        blips++; await sleep(2500); continue;
+      }
+      throw e;
+    }
+    blips = 0;
     if (d.status_code === 'FINISHED') return;
     if (d.status_code === 'ERROR' || d.status_code === 'EXPIRED') {
       throw new Error(`Instagram couldn't process the photo (${d.status || d.status_code})`);
     }
     await sleep(2500);
   }
+  // Still not ready after the full window — fail loudly rather than publishing
+  // an unready container (which would error confusingly downstream).
+  throw new Error('Instagram is still processing the photo — it took too long. Try scheduling again.');
 }
 
 async function createImageContainer(igId, imageUrl, { caption, story, carouselChild } = {}) {
