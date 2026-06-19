@@ -59,18 +59,20 @@
 
   /* ── Jarvis glass panel (exact) ── */
   .panel{
-    position:relative;isolation:isolate;border-radius:16px;padding:20px;margin-bottom:18px;
+    position:relative;isolation:isolate;border-radius:18px;padding:20px;margin-bottom:18px;
     background:
-      linear-gradient(180deg, rgba(150,205,255,0.13) 0%, rgba(135,190,255,0.03) 12%, rgba(120,185,255,0) 22%),
-      linear-gradient(180deg,#1c2433 0%,#131a28 48%,#0d121d 100%);
-    border:1px solid rgba(120,170,245,0.21);
-    box-shadow:0 22px 48px rgba(0,0,0,0.6), 0 0 28px rgba(50,110,200,0.10),
-      inset 0 1px 0 rgba(185,220,255,0.32), inset 0 -1px 0 rgba(0,0,0,0.45);
+      linear-gradient(180deg, rgba(195,228,255,0.22) 0%, rgba(150,200,255,0.06) 16%, rgba(120,185,255,0) 34%),
+      linear-gradient(180deg, rgba(34,44,63,0.52) 0%, rgba(20,28,43,0.44) 50%, rgba(11,16,26,0.52) 100%);
+    -webkit-backdrop-filter:blur(28px) saturate(1.6);
+    backdrop-filter:blur(28px) saturate(1.6);
+    border:1px solid rgba(155,200,255,0.30);
+    box-shadow:0 28px 60px rgba(0,0,0,0.6), 0 0 40px rgba(50,110,200,0.16),
+      inset 0 1px 0 rgba(215,238,255,0.55), inset 0 -1px 0 rgba(0,0,0,0.42), inset 0 0 48px rgba(120,170,255,0.06);
     transition:box-shadow .3s cubic-bezier(.2,.8,.2,1), border-color .3s, transform .3s}
-  .panel::before{content:'';position:absolute;inset:0;border-radius:16px;z-index:-1;pointer-events:none;
-    background:linear-gradient(118deg, rgba(165,210,255,0.11) 0%, rgba(150,200,255,0) 28%, rgba(120,180,255,0) 66%, rgba(100,170,255,0.07) 100%)}
-  .panel::after{content:'';position:absolute;left:10px;right:10px;top:0;height:1px;pointer-events:none;
-    background:linear-gradient(90deg, transparent, rgba(200,228,255,0.7), transparent)}
+  .panel::before{content:'';position:absolute;inset:0;border-radius:18px;z-index:-1;pointer-events:none;
+    background:linear-gradient(118deg, rgba(180,218,255,0.14) 0%, rgba(150,200,255,0) 26%, rgba(120,180,255,0) 64%, rgba(110,175,255,0.09) 100%)}
+  .panel::after{content:'';position:absolute;left:14px;right:14px;top:0;height:1px;pointer-events:none;
+    background:linear-gradient(90deg, transparent, rgba(220,238,255,0.9), transparent)}
   .panel:hover{border-color:rgba(120,175,255,0.4);
     box-shadow:0 28px 60px rgba(0,0,0,0.7), 0 0 42px rgba(50,110,210,0.20), inset 0 1px 0 rgba(170,210,255,0.38), inset 0 -1px 0 rgba(0,0,0,0.5)}
 
@@ -162,12 +164,14 @@
   .item .meta .d{font-size:12px;color:var(--muted);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .item .act{display:flex;gap:6px;flex:0 0 auto;align-items:center}
   .item .act button{padding:8px 12px;font-size:12px}
-  .pill{font-size:9.5px;letter-spacing:.7px;text-transform:uppercase;padding:3px 9px;border-radius:999px;font-weight:700}
-  .pill.feed{color:var(--blue-bright);background:rgba(109,184,255,.12);border:1px solid rgba(109,184,255,.4)}
-  .pill.story{color:var(--amber);background:rgba(245,181,74,.12);border:1px solid rgba(245,181,74,.4)}
-  .pill.posted{color:var(--green);background:rgba(52,211,153,.12);border:1px solid rgba(52,211,153,.4)}
-  .pill.failed,.pill.missed{color:#ffb4b4;background:rgba(248,113,113,.12);border:1px solid rgba(248,113,113,.4)}
-  .pill.canceled{color:#9db8e6;background:rgba(120,150,200,.1);border:1px solid var(--tile-border)}
+  .pill{font-size:9.5px;letter-spacing:.7px;text-transform:uppercase;padding:4px 11px;border-radius:999px;font-weight:700;
+    -webkit-backdrop-filter:blur(8px) saturate(1.3);backdrop-filter:blur(8px) saturate(1.3);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,0.22), 0 2px 7px rgba(0,0,0,0.28)}
+  .pill.feed{color:#d4ebff;background:linear-gradient(180deg, rgba(109,184,255,.32), rgba(109,184,255,.10));border:1px solid rgba(109,184,255,.5)}
+  .pill.story{color:#ffdf9c;background:linear-gradient(180deg, rgba(245,181,74,.30), rgba(245,181,74,.09));border:1px solid rgba(245,181,74,.5)}
+  .pill.posted{color:#c4f4de;background:linear-gradient(180deg, rgba(52,211,153,.30), rgba(52,211,153,.09));border:1px solid rgba(52,211,153,.5)}
+  .pill.failed,.pill.missed{color:#ffcdcd;background:linear-gradient(180deg, rgba(248,113,113,.30), rgba(248,113,113,.09));border:1px solid rgba(248,113,113,.5)}
+  .pill.canceled{color:#c2d2ee;background:linear-gradient(180deg, rgba(150,180,230,.18), rgba(150,180,230,.05));border:1px solid var(--tile-border)}
 
   .notice{padding:13px 16px;border-radius:12px;font-size:13px;margin-bottom:18px;display:none}
   .notice.warn{display:block;color:#cfe0f5;background:rgba(59,130,246,0.10);border:1px solid rgba(59,130,246,0.35)}
@@ -238,8 +242,8 @@
         </div>
 
         <div class="field" id="capWrap">
-          <label class="f">Caption <span class="muted" style="text-transform:none;letter-spacing:0">(feed only)</span></label>
-          <textarea id="caption" placeholder="Write your caption…"></textarea>
+          <label class="f">Description <span class="muted" style="text-transform:none;letter-spacing:0">(feed only)</span></label>
+          <textarea id="caption" placeholder="Write your description…"></textarea>
         </div>
 
         <div class="field">
