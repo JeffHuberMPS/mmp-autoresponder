@@ -126,9 +126,23 @@ async function createImageContainer(igId, imageUrl, { caption, story, carouselCh
   const { id } = await graphPost(`${igId}/media`, params);
   return id;
 }
-async function publishContainer(igId, creationId) {
-  const { id } = await graphPost(`${igId}/media_publish`, { creation_id: creationId, access_token: config.igAccessToken });
-  return id;
+async function publishContainer(igId, creationId, tries = 4) {
+  let lastErr;
+  for (let i = 0; i < tries; i++) {
+    try {
+      const { id } = await graphPost(`${igId}/media_publish`, { creation_id: creationId, access_token: config.igAccessToken });
+      return id;
+    } catch (e) {
+      lastErr = e;
+      // Right after a container reports FINISHED, media_publish can briefly fail
+      // with "resource does not exist" / "media ID not available" while Instagram
+      // finishes wiring it up. These are transient — wait and retry.
+      const transient = /does not exist|not available|temporarily|try again|media id/i.test(e.message || '');
+      if (!transient || i === tries - 1) throw e;
+      await sleep(3500);
+    }
+  }
+  throw lastErr;
 }
 
 // Publish ONE target ('feed' or 'story') and return the new media ids.
@@ -172,18 +186,29 @@ async function publishPost(post) {
   const imageUrls = (post.media || []).map((m) => m.url).filter(Boolean);
   if (!imageUrls.length) throw new Error('This post has no photos');
   const allIds = [];
+  const postedTargets = [];
+  const errors = [];
+  // Publish each target independently so a hiccup on one (e.g. Story) never
+  // discards a target that already went live (e.g. Feed).
   for (const target of post.targets || [post.type]) {
-    const ids = await publishTarget(igId, target, imageUrls, post.caption);
-    allIds.push(...ids);
+    try {
+      const ids = await publishTarget(igId, target, imageUrls, post.caption);
+      allIds.push(...ids);
+      postedTargets.push(target);
+    } catch (e) {
+      errors.push(`${target}: ${e.message}`);
+    }
   }
+  // Only a TOTAL failure (nothing reached Instagram) counts as failed.
+  if (!allIds.length) throw new Error(errors.join(' · ') || 'Nothing was published');
   let permalink = null;
-  if (allIds[0] && (post.targets || []).includes('feed')) {
+  if (allIds[0] && postedTargets.includes('feed')) {
     try {
       const d = await graphGet(`${GRAPH}/${allIds[0]}?fields=permalink&access_token=${encodeURIComponent(config.igAccessToken)}`);
       permalink = d.permalink || null;
     } catch { /* stories / no permalink */ }
   }
-  return { ids: allIds, permalink };
+  return { ids: allIds, permalink, postedTargets, partialError: errors.length ? errors.join(' · ') : null };
 }
 
 // ── Uploads ──
@@ -263,12 +288,13 @@ export async function publishById(id) {
   const p = d.posts.find((x) => x.id === id);
   if (!p) throw new Error('Post not found');
   try {
-    const { ids, permalink } = await publishPost(p);
+    const { ids, permalink, postedTargets, partialError } = await publishPost(p);
     p.status = 'posted';
     p.postedAt = new Date().toISOString();
     p.resultIds = ids;
     p.permalink = permalink;
-    p.error = null;
+    p.postedTargets = postedTargets || null;
+    p.error = partialError || null;
     await saveData(d);
     for (const m of p.media || []) deleteImage(m.publicId);
     return { ok: true, post: p };
@@ -308,12 +334,13 @@ export async function runDuePosts() {
       p.status = 'posting';
       await saveData(d); // persist the lock before the slow network calls
       try {
-        const { ids, permalink } = await publishPost(p);
+        const { ids, permalink, postedTargets, partialError } = await publishPost(p);
         p.status = 'posted';
         p.postedAt = new Date().toISOString();
         p.resultIds = ids;
         p.permalink = permalink;
-        p.error = null;
+        p.postedTargets = postedTargets || null;
+        p.error = partialError || null;
         ran++;
         console.log(`  📸 Auto-poster published ${p.type} (${p.media.length} photo${p.media.length > 1 ? 's' : ''})`);
         for (const m of p.media || []) deleteImage(m.publicId);
