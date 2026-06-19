@@ -186,6 +186,20 @@ app.post('/api/poster/settings', async (req, res) => {
   try { ok(res, { settings: await poster.saveSettings(req.body || {}) }); }
   catch (err) { fail(res, err, 400); }
 });
+// TEMP diagnostic: reproduce the publish step (without posting) to surface the
+// exact Instagram error. Uses the most recent post's image if none is given.
+app.get('/api/poster/diagnose', async (req, res) => {
+  try {
+    let imageUrl = req.query.url;
+    if (!imageUrl) {
+      const { history } = await poster.listPosts();
+      const withMedia = history.find((p) => p.media && p.media[0] && p.media[0].url);
+      imageUrl = withMedia?.media?.[0]?.url || null;
+    }
+    res.json(await poster.diagnose(imageUrl));
+  } catch (err) { fail(res, err); }
+});
+
 // External pinger hits this every few minutes: wakes the host AND fires due posts.
 app.get('/api/poster/run', async (req, res) => res.json(await poster.runDuePosts().catch((e) => ({ ran: 0, error: e.message }))));
 app.post('/api/poster/run', async (req, res) => res.json(await poster.runDuePosts().catch((e) => ({ ran: 0, error: e.message }))));

@@ -46,6 +46,17 @@ async function getIgUserId() {
   return _igUserId;
 }
 
+// Build a readable error from Instagram's error object (code/subcode help a lot).
+function igError(data, status) {
+  const e = data?.error;
+  if (!e) return new Error(`Instagram HTTP ${status}`);
+  const bits = [e.error_user_msg || e.message || 'Instagram error'];
+  if (e.code != null) bits.push(`[code ${e.code}${e.error_subcode ? '/' + e.error_subcode : ''}]`);
+  const err = new Error(bits.join(' '));
+  err.ig = { code: e.code, subcode: e.error_subcode, type: e.type, message: e.message, user_msg: e.error_user_msg };
+  return err;
+}
+
 // ── Graph helpers ──
 async function graphPost(pathPart, params) {
   const res = await fetch(`${GRAPH}/${pathPart}`, {
@@ -55,14 +66,44 @@ async function graphPost(pathPart, params) {
     signal: AbortSignal.timeout(30000),
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok || data.error) throw new Error(data?.error?.message || `Instagram HTTP ${res.status}`);
+  if (!res.ok || data.error) throw igError(data, res.status);
   return data;
 }
 async function graphGet(url) {
   const res = await fetch(url, { signal: AbortSignal.timeout(20000) });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok || data.error) throw new Error(data?.error?.message || `Instagram HTTP ${res.status}`);
+  if (!res.ok || data.error) throw igError(data, res.status);
   return data;
+}
+
+// ── Diagnostic: reproduce the publish path WITHOUT actually posting ──
+// Creating a media container does NOT publish anything (only media_publish does),
+// so this is safe to run. It tells us exactly where publishing breaks.
+export async function diagnose(imageUrl) {
+  const out = { graphBase: GRAPH, hasToken: Boolean(config.igAccessToken), steps: {} };
+  if (!config.igAccessToken) { out.steps.token = 'MISSING'; return out; }
+  // 1) who am I (the id used for /{id}/media)
+  try {
+    const res = await fetch(`${GRAPH}/me?fields=user_id,username,account_type&access_token=${encodeURIComponent(config.igAccessToken)}`, { signal: AbortSignal.timeout(15000) });
+    const d = await res.json().catch(() => ({}));
+    out.steps.me = { ok: res.ok && !d.error, raw: d };
+    _igUserId = d.user_id || d.id || _igUserId;
+    out.igUserId = _igUserId || null;
+  } catch (e) { out.steps.me = { ok: false, error: e.message }; }
+  if (!_igUserId) return out;
+  // 2) try to CREATE a feed container (no publish) — surfaces the real error
+  if (imageUrl) {
+    try {
+      const r = await graphPost(`${_igUserId}/media`, { image_url: imageUrl, caption: 'diagnostic (not published)', access_token: config.igAccessToken });
+      out.steps.feedContainer = { ok: true, id: r.id };
+    } catch (e) { out.steps.feedContainer = { ok: false, error: e.message, ig: e.ig || null }; }
+    // 3) try a STORY container too
+    try {
+      const r = await graphPost(`${_igUserId}/media`, { image_url: imageUrl, media_type: 'STORIES', access_token: config.igAccessToken });
+      out.steps.storyContainer = { ok: true, id: r.id };
+    } catch (e) { out.steps.storyContainer = { ok: false, error: e.message, ig: e.ig || null }; }
+  }
+  return out;
 }
 
 // Instagram ingests the photo asynchronously — wait until FINISHED before publishing.
