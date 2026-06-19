@@ -191,9 +191,15 @@ app.get('/api/poster/run', async (req, res) => res.json(await poster.runDuePosts
 app.post('/api/poster/run', async (req, res) => res.json(await poster.runDuePosts().catch((e) => ({ ran: 0, error: e.message }))));
 
 // ── The visual pages ──
-app.get('/ig', (req, res) => res.sendFile(path.join(__dirname, 'views', 'ig.html')));
-app.get('/autoresponder', (req, res) => res.sendFile(path.join(__dirname, 'views', 'ig.html')));
-app.get('/poster', (req, res) => res.sendFile(path.join(__dirname, 'views', 'poster.html')));
+// Always serve the freshest HTML (no-store) so the Jarvis iframe / browser never
+// shows a stale cached page — UI edits + fixes appear immediately on refresh.
+const sendPage = (res, file) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+  res.sendFile(path.join(__dirname, 'views', file));
+};
+app.get('/ig', (req, res) => sendPage(res, 'ig.html'));
+app.get('/autoresponder', (req, res) => sendPage(res, 'ig.html'));
+app.get('/poster', (req, res) => sendPage(res, 'poster.html'));
 
 // ── "Install on phone" support (PWA) — makes Add-to-Home-Screen give a real
 // full-screen app icon, so it feels like a native app. ──
