@@ -17,6 +17,8 @@
   html.embed .tabs, html.embed .head{display:none!important}
   html.embed body{padding-top:12px}
   html.embed #setupNotice{display:none!important} /* no orange setup bar inside the Scheduler tab */
+  html.embed #profilePanel{display:none!important} /* parent /ig already shows the MMP header — don't leave an empty glass panel here */
+  html.embed #profilePanel + #setupNotice{margin-top:0}
   /* Smooth whole-page cross-fade when switching tabs (/ig <-> /poster). Root
      only — NO per-element view-transition-name, so nothing morphs/streaks; the
      gold logo sits in the same spot on both pages and stays rock-steady. */
@@ -193,7 +195,7 @@
     <a href="/poster" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="5.4"/><circle cx="12" cy="12" r="4"/><circle cx="17.4" cy="6.6" r="1.1" fill="currentColor" stroke="none"/></svg>Scheduler</a>
   </div>
 
-  <div class="panel">
+  <div class="panel" id="profilePanel">
     <div class="head">
       <div class="left">
         <div class="emblem"><span>MMP</span><img id="emblemImg" src="/mmp-logo.jpg" alt="MMP" style="display:block" /></div>
