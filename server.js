@@ -156,7 +156,7 @@ app.get('/api/poster/list', async (req, res) => {
   try { ok(res, await poster.listPosts()); } catch (err) { fail(res, err); }
 });
 app.get('/api/poster/analytics', async (req, res) => {
-  try { ok(res, await poster.getAnalytics({ limit: Number(req.query.limit) || 50 })); }
+  try { ok(res, await poster.getAnalytics({ limit: Number(req.query.limit) || 50, force: req.query.fresh === '1' })); }
   catch (err) { fail(res, err); }
 });
 app.post('/api/poster/cancel', async (req, res) => {

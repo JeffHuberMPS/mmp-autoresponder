@@ -673,12 +673,20 @@ function aSparkline(series){
 }
 
 async function loadAnalytics(force){
-  if(_analyticsLoaded && !force) return;
   const box=$('analyticsBody');
-  box.innerHTML='<div class="amuted">Crunching your numbers… (reach can take a few seconds)</div>';
-  let d; try{ d=await api('/api/poster/analytics'); }
-  catch(e){ box.innerHTML='<div class="amuted" style="color:#ffb4b4">Couldn’t load analytics: '+e.message+'</div>'; return; }
+  // INSTANT: paint the last-known numbers saved on this device immediately.
+  let hadCache=false;
+  if(!force){ try{ const c=JSON.parse(localStorage.getItem('mmp_analytics')||'null'); if(c&&c.connected){ renderAnalytics(c); hadCache=true; } }catch{} }
+  if(_analyticsLoaded && !force) return;           // already refreshed this session → stay instant
+  if(!hadCache) box.innerHTML='<div class="amuted">Loading your numbers…</div>';
+  let d; try{ d=await api('/api/poster/analytics'+(force?'?fresh=1':'')); }
+  catch(e){ if(!hadCache) box.innerHTML='<div class="amuted" style="color:#ffb4b4">Couldn’t load analytics: '+e.message+'</div>'; return; }
   _analyticsLoaded=true;
+  try{ localStorage.setItem('mmp_analytics', JSON.stringify(d)); }catch{}
+  renderAnalytics(d);
+}
+function renderAnalytics(d){
+  const box=$('analyticsBody');
   if(!d.connected){ box.innerHTML='<div class="amuted">Instagram isn’t connected yet.</div>'; return; }
   const all=d.media||[]; const posts=all.filter(m=>m.type!=='story');
   const avgEng=posts.length? Math.round(posts.reduce((s,m)=>s+engOf(m),0)/posts.length):0;

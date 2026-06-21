@@ -255,8 +255,16 @@ export async function saveSettings(patch = {}) {
 // snapshot in our own data so we can chart growth even without insights access.
 const enc = (s) => encodeURIComponent(s);
 
-export async function getAnalytics({ limit = 50 } = {}) {
+// In-memory cache so re-opening the Analytics tab is instant (no re-fetching
+// Instagram every time). ~10 min freshness; the Refresh button forces a reload.
+let _analyticsCache = { at: 0, data: null };
+const ANALYTICS_TTL = 10 * 60_000;
+
+export async function getAnalytics({ limit = 50, force = false } = {}) {
   if (!config.igAccessToken) return { connected: false };
+  if (!force && _analyticsCache.data && (Date.now() - _analyticsCache.at) < ANALYTICS_TTL) {
+    return { ..._analyticsCache.data, cached: true };
+  }
   const igId = await getIgUserId();
   const token = config.igAccessToken;
 
@@ -285,9 +293,9 @@ export async function getAnalytics({ limit = 50 } = {}) {
     }));
   } catch { /* media unavailable */ }
 
-  // Best-effort reach/saved for the most recent posts (skip silently if blocked)
-  for (const m of media.slice(0, 24)) {
-    if (m.type === 'story') continue;
+  // Best-effort reach/saved for the most recent posts — fetched IN PARALLEL so
+  // the whole thing returns in ~one round-trip instead of one-per-post.
+  await Promise.all(media.slice(0, 24).filter((m) => m.type !== 'story').map(async (m) => {
     try {
       const ins = await graphGet(`${GRAPH}/${m.id}/insights?metric=reach,saved&access_token=${enc(token)}`);
       for (const row of (ins.data || [])) {
@@ -296,7 +304,7 @@ export async function getAnalytics({ limit = 50 } = {}) {
         if (row.name === 'saved') m.saved = v ?? null;
       }
     } catch { /* insights not available for this account/post — fine */ }
-  }
+  }));
 
   // Daily follower snapshot → growth series, stored in our own data blob
   let followerSeries = [];
@@ -315,7 +323,9 @@ export async function getAnalytics({ limit = 50 } = {}) {
     followerSeries = series;
   } catch { /* store unavailable */ }
 
-  return { connected: true, username, followers, mediaCount, media, followerSeries, fetchedAt: new Date().toISOString() };
+  const payload = { connected: true, username, followers, mediaCount, media, followerSeries, fetchedAt: new Date().toISOString() };
+  _analyticsCache = { at: Date.now(), data: payload };
+  return payload;
 }
 
 export async function schedulePost({ type, media, caption, scheduledAt, targets } = {}) {
