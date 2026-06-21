@@ -406,17 +406,26 @@ async function importGooglePhotos(sessionId){
   gpSession=null; gpImporting=false;
 }
 
+// Open the picker as a POPUP WINDOW, not a tab. A popup doesn't hide the
+// scheduler tab, so the browser never throttles our polling — we detect "Done"
+// at full speed and close the popup instantly. The scheduler stays visible the
+// whole time, so closing the popup drops you right onto the preview.
+function openPicker(url){
+  const w=560,h=720;
+  const y=Math.max(0,(screen.height-h)/2), x=Math.max(0,(screen.width-w)/2);
+  return window.open(url,'gpicker',`popup=yes,width=${w},height=${h},left=${x},top=${y}`);
+}
+
 async function addFromGoogle(){
   const b=$('gpBtn');
-  // Open the picker tab NOW (inside the click) so the browser allows it AND we
-  // keep a handle we can close later.
-  gpPicker = window.open('about:blank','_blank');
+  // Open NOW (inside the click) so the browser allows it AND we keep a handle.
+  gpPicker = openPicker('about:blank');
   try{
     b.disabled=true;
     gpStatus('Opening Google Photos…','work');
     const s = await api('/api/google/picker/start',{method:'POST'});
     gpSession = s.sessionId; gpImporting=false;
-    if(gpPicker){ gpPicker.location.href = s.pickerUri; } else { gpPicker = window.open(s.pickerUri,'_blank'); }
+    if(gpPicker && !gpPicker.closed){ gpPicker.location.href = s.pickerUri; } else { gpPicker = openPicker(s.pickerUri); }
     gpStatus('Pick your photos and tap Done — they’ll show up here automatically.','work');
     // Poll twice a second. The instant Google says you're done, import + close the
     // tab → you land back here looking at the preview. (The visibilitychange
