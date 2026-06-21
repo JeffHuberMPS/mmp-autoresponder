@@ -36,6 +36,13 @@
   body{
     color:var(--text);
     font:14.5px/1.55 'Segoe UI',system-ui,-apple-system,sans-serif;
+    background:#05070b; padding:24px;
+  }
+  /* Backdrop on a fixed, GPU-composited layer so scrolling never repaints it.
+     (background-attachment:fixed forced a full-page repaint every frame = the
+     stutter.) Same fixed look, buttery-smooth scroll. */
+  body::before{
+    content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;
     /* identical Jarvis backdrop: faint grid + blue radial glows */
     background:
       linear-gradient(rgba(96,156,245,0.038) 1px, transparent 1px),
@@ -44,7 +51,6 @@
       radial-gradient(820px 480px at 6% 2%, rgba(46,72,140,0.18) 0%, rgba(5,7,11,0) 52%),
       linear-gradient(180deg,#0b0e15 0%,#05070b 100%);
     background-size:46px 46px,46px 46px,auto,auto,auto;
-    background-attachment:fixed; padding:24px;
   }
   @media(max-width:560px){ body{padding:14px} }
   .wrap{max-width:1100px;margin:0 auto}
@@ -64,9 +70,10 @@
     position:relative;isolation:isolate;border-radius:18px;padding:20px;margin-bottom:18px;
     background:
       linear-gradient(180deg, rgba(195,228,255,0.22) 0%, rgba(150,200,255,0.06) 16%, rgba(120,185,255,0) 34%),
-      linear-gradient(180deg, rgba(34,44,63,0.52) 0%, rgba(20,28,43,0.44) 50%, rgba(11,16,26,0.52) 100%);
-    -webkit-backdrop-filter:blur(28px) saturate(1.6);
-    backdrop-filter:blur(28px) saturate(1.6);
+      linear-gradient(180deg, rgba(34,44,63,0.93) 0%, rgba(20,28,43,0.91) 50%, rgba(11,16,26,0.95) 100%);
+    /* No backdrop-filter: a 28px live blur re-blurs every scroll frame and made
+       scrolling stutter. The translucent gradients + border + insets keep the
+       same glass look, and the panel is now solid so it scrolls perfectly. */
     border:1px solid rgba(155,200,255,0.30);
     box-shadow:0 28px 60px rgba(0,0,0,0.6), 0 0 40px rgba(50,110,200,0.16),
       inset 0 1px 0 rgba(215,238,255,0.55), inset 0 -1px 0 rgba(0,0,0,0.42), inset 0 0 48px rgba(120,170,255,0.06);
@@ -199,7 +206,6 @@
   .item .act{display:flex;gap:6px;flex:0 0 auto;align-items:center}
   .item .act button{padding:8px 12px;font-size:12px}
   .pill{font-size:9.5px;letter-spacing:.7px;text-transform:uppercase;padding:4px 11px;border-radius:999px;font-weight:700;
-    -webkit-backdrop-filter:blur(8px) saturate(1.3);backdrop-filter:blur(8px) saturate(1.3);
     box-shadow:inset 0 1px 0 rgba(255,255,255,0.22), 0 2px 7px rgba(0,0,0,0.28)}
   .pill.feed{color:#d4ebff;background:linear-gradient(180deg, rgba(109,184,255,.32), rgba(109,184,255,.10));border:1px solid rgba(109,184,255,.5)}
   .pill.story{color:#ffdf9c;background:linear-gradient(180deg, rgba(245,181,74,.30), rgba(245,181,74,.09));border:1px solid rgba(245,181,74,.5)}
