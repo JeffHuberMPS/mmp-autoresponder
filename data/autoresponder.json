@@ -67,6 +67,12 @@
       "name": "Tracker + 7-Day Discipline Reset",
       "description": "The MMP tracker bundle plus the free 7-Day Discipline Reset.",
       "link": "https://mindsetlion3.gumroad.com/l/Reset"
+    },
+    {
+      "id": "creatine-aff",
+      "name": "Creatine (affiliate)",
+      "description": "The creatine I use — Amazon affiliate.",
+      "link": "https://amzn.to/4oCMSkd"
     }
   ],
   "keywords": [
@@ -76,6 +82,14 @@
         "discipline-bundle"
       ],
       "message": "Here's your 7-Day Discipline Reset + the tracker bundle 👇"
+    },
+    {
+      "trigger": "creatine",
+      "offerIds": [
+        "creatine-aff",
+        "discipline-bundle"
+      ],
+      "message": "Here's the creatine I run 💪 + your free 7-Day Discipline Reset 👇"
     }
   ],
   "flow": {
