@@ -407,7 +407,9 @@ async function importGooglePhotos(sessionId){
     }
     for(const m of r.media){ if(staged.length>=maxPhotos()) break; staged.push({preview:m.url, url:m.url, publicId:m.publicId, uploading:false}); }
     renderThumbs();                 // ← the dashed-border preview appears here, no button
+    closeGoogleTab();               // best-effort (Google's COOP may block it)
     gpStatus('');
+    toast('Photos added ✅');
   }catch(e){
     gpStatus('Couldn’t load your photos: '+e.message, 'err', 'Try again', ()=>addFromGoogle());
   }
@@ -438,15 +440,15 @@ async function addFromGoogle(){
     // Poll twice a second. The instant Google says you're done, import + close the
     // tab → you land back here looking at the preview. (The visibilitychange
     // handler below is a backstop if the browser throttled this while away.)
+    // IMPORTANT: do NOT check gpPicker.closed here. Google's picker sends a
+    // Cross-Origin-Opener-Policy that severs our handle, so gpPicker.closed
+    // falsely reads `true` even while the window is open — which used to make
+    // this loop bail instantly (no detection, no preview). We poll purely by
+    // session id, which is independent of the (now-useless) window handle.
     const deadline = Date.now()+5*60*1000;
     while(Date.now()<deadline){
-      if(gpSession!==s.sessionId || gpImporting) return;        // already handled
+      if(gpSession!==s.sessionId || gpImporting) return;        // already handled elsewhere
       if(await pollReady(s.sessionId)){ await importGooglePhotos(s.sessionId); return; }
-      if(gpPicker && gpPicker.closed){                          // tab gone — check once more
-        if(await pollReady(s.sessionId)){ await importGooglePhotos(s.sessionId); }
-        else { gpSession=null; gpStatus(''); }
-        return;
-      }
       await new Promise(r=>setTimeout(r, 500));
     }
     if(gpSession===s.sessionId){ gpSession=null; gpStatus('Didn’t catch your pick — tap Add from Google Photos to try again.','err'); }
