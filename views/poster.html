@@ -418,7 +418,7 @@ async function addFromGoogle(){
     gpSession = s.sessionId; gpImporting=false;
     if(gpPicker){ gpPicker.location.href = s.pickerUri; } else { gpPicker = window.open(s.pickerUri,'_blank'); }
     gpStatus('Pick your photos and tap Done — they’ll show up here automatically.','work');
-    // Poll every second. The instant Google says you're done, import + close the
+    // Poll twice a second. The instant Google says you're done, import + close the
     // tab → you land back here looking at the preview. (The visibilitychange
     // handler below is a backstop if the browser throttled this while away.)
     const deadline = Date.now()+5*60*1000;
@@ -430,7 +430,7 @@ async function addFromGoogle(){
         else { gpSession=null; gpStatus(''); }
         return;
       }
-      await new Promise(r=>setTimeout(r, 1000));
+      await new Promise(r=>setTimeout(r, 500));
     }
     if(gpSession===s.sessionId){ gpSession=null; gpStatus('Didn’t catch your pick — tap Add from Google Photos to try again.','err'); }
   }catch(e){
