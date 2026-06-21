@@ -180,6 +180,9 @@
   .subtab .cnt:empty,.subtab .cnt.zero{display:none}
   .view{display:none}
   .view.on{display:block}
+  .histlink{display:inline-block;padding:9px 18px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;
+    color:#a9dcff;border:1px solid rgba(59,130,246,.35);background:rgba(59,130,246,.10);text-decoration:none}
+  .histlink:hover{border-color:var(--blue);background:rgba(59,130,246,.18)}
   @media(max-width:520px){ .subtab{font-size:12px;padding:12px 5px;gap:5px} }
 
   /* ── scheduled / history list ── */
@@ -542,6 +545,7 @@ function itemHTML(p, kind){
   return '<div class="item">'+pic+'<div class="meta"><div class="t">'+tgt+'<span style="color:#c7d2e6;font-weight:700">'+count+'</span></div><div class="d">'+sub+'</div>'+err+'</div>'+right+'</div>';
 }
 
+let historyExpanded = false; // History tab shows 30 most recent until expanded
 async function loadLists(){
   const d = await api('/api/poster/list');
   const up = d.upcoming;
@@ -553,7 +557,22 @@ async function loadLists(){
       '<div class="daygroup"><div class="daylabel">'+day+'</div><div class="list">'+posts.map(p=>itemHTML(p,'upcoming')).join('')+'</div></div>'
     )).join('');
   }
-  $('history').innerHTML = d.history.length ? '<div class="list">'+d.history.map(p=>itemHTML(p,'history')).join('')+'</div>' : '<div class="muted">Nothing posted yet.</div>';
+  // History: show the most recent 30 (about a month of daily posts); older ones
+  // are one tap away so the tab stays fast even after hundreds of posts.
+  const hist = d.history;
+  if(!hist.length){
+    $('history').innerHTML = '<div class="muted">Nothing posted yet.</div>';
+  } else {
+    const shown = historyExpanded ? hist : hist.slice(0, 30);
+    let html = '<div class="list">'+shown.map(p=>itemHTML(p,'history')).join('')+'</div>';
+    if(hist.length > 30){
+      html += historyExpanded
+        ? '<div style="text-align:center;margin-top:16px"><a href="#" id="histToggle" class="histlink">▲ Show less</a></div>'
+        : '<div style="text-align:center;margin-top:16px"><a href="#" id="histToggle" class="histlink">Show older ('+(hist.length-30)+' more) ▾</a></div>';
+    }
+    $('history').innerHTML = html;
+    const tg=$('histToggle'); if(tg) tg.onclick=(e)=>{ e.preventDefault(); historyExpanded=!historyExpanded; loadLists(); };
+  }
 
   // Live counts on the sub-tabs (hidden when zero).
   const setCnt=(id,n)=>{ const e=$(id); if(!e) return; e.textContent=n; e.classList.toggle('zero', !n); };
