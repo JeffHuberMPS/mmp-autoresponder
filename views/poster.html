@@ -167,6 +167,20 @@
     flex:0 0 auto;animation:gpspin .8s linear infinite}
   @keyframes gpspin{to{transform:rotate(360deg)}}
   #gpStatus button{padding:7px 14px;font-size:12.5px;margin-left:auto;flex:0 0 auto}
+  /* Scheduler sub-tabs — open one section at a time so the page never gets long */
+  .subtabs{display:flex;gap:8px;margin-bottom:18px;flex-wrap:nowrap}
+  .subtab{flex:1 1 0;min-width:0;display:flex;align-items:center;justify-content:center;gap:7px;text-align:center;
+    padding:13px 8px;border-radius:12px;cursor:pointer;user-select:none;font-weight:700;font-size:13.5px;white-space:nowrap;
+    color:#9db8e6;border:1px solid rgba(120,170,245,0.18);background:linear-gradient(180deg,#141c2c,#0d121d);transition:.15s}
+  .subtab:hover{border-color:rgba(120,175,255,0.4);color:#cfe4ff}
+  .subtab.on{color:#eaf6ff;border-color:var(--blue);background:linear-gradient(180deg, rgba(70,160,255,0.30), rgba(50,130,240,0.12));
+    box-shadow:0 0 16px rgba(59,130,246,0.22)}
+  .subtab .cnt{font-size:11px;font-weight:800;padding:1px 7px;border-radius:999px;background:rgba(59,130,246,.22);color:#cfe6ff}
+  .subtab.on .cnt{background:rgba(255,255,255,.18);color:#fff}
+  .subtab .cnt:empty,.subtab .cnt.zero{display:none}
+  .view{display:none}
+  .view.on{display:block}
+  @media(max-width:520px){ .subtab{font-size:12px;padding:12px 5px;gap:5px} }
 
   /* ── scheduled / history list ── */
   .list{display:flex;flex-direction:column;gap:11px}
@@ -225,8 +239,16 @@
 
   <div id="setupNotice" class="notice"></div>
 
+  <!-- Sub-tabs: only one section shows at a time -->
+  <div class="subtabs" id="subtabs">
+    <div class="subtab on" data-v="new">New post</div>
+    <div class="subtab" data-v="scheduled">Scheduled <span class="cnt zero" id="cntScheduled">0</span></div>
+    <div class="subtab" data-v="history">History <span class="cnt zero" id="cntHistory">0</span></div>
+    <div class="subtab" data-v="settings">Settings</div>
+  </div>
+
   <!-- CREATE -->
-  <div class="panel">
+  <div class="panel view on" id="view-new">
     <div class="sec">New post</div>
     <div class="cols">
       <div>
@@ -280,19 +302,19 @@
   </div>
 
   <!-- UPCOMING -->
-  <div class="panel">
+  <div class="panel view" id="view-scheduled">
     <div class="sec">Scheduled</div>
     <div id="upcoming"><div class="muted">Nothing scheduled yet.</div></div>
   </div>
 
   <!-- HISTORY -->
-  <div class="panel">
+  <div class="panel view" id="view-history">
     <div class="sec">History</div>
     <div id="history" class="list"><div class="muted">Nothing posted yet.</div></div>
   </div>
 
   <!-- SETTINGS -->
-  <div class="panel">
+  <div class="panel view" id="view-settings">
     <div class="sec">Settings</div>
     <label class="f">If my app was asleep, skip posts older than (hours)</label>
     <div class="setrow">
@@ -533,9 +555,24 @@ async function loadLists(){
   }
   $('history').innerHTML = d.history.length ? '<div class="list">'+d.history.map(p=>itemHTML(p,'history')).join('')+'</div>' : '<div class="muted">Nothing posted yet.</div>';
 
+  // Live counts on the sub-tabs (hidden when zero).
+  const setCnt=(id,n)=>{ const e=$(id); if(!e) return; e.textContent=n; e.classList.toggle('zero', !n); };
+  setCnt('cntScheduled', up.length);
+  setCnt('cntHistory', d.history.length);
+
   document.querySelectorAll('[data-cancel]').forEach(b=>b.onclick=async()=>{ try{ await api('/api/poster/cancel',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:b.dataset.cancel})}); toast('Canceled'); loadLists(); }catch(e){ toast(e.message,false);} });
   document.querySelectorAll('[data-now]').forEach(b=>b.onclick=async()=>{ b.disabled=true; b.textContent='Posting…'; try{ const r=await fetch('/api/poster/publish-now',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:b.dataset.now})}); const j=await r.json(); toast(j.ok?'Posted! 🎉':(j.error||'Failed'), !!j.ok); }catch(e){ toast(e.message,false);} loadLists(); });
 }
+
+// Sub-tab switching: show one section at a time, keep the page short.
+document.querySelectorAll('#subtabs .subtab').forEach(t=>t.onclick=()=>{
+  document.querySelectorAll('#subtabs .subtab').forEach(x=>x.classList.remove('on'));
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('on'));
+  t.classList.add('on');
+  const v=document.getElementById('view-'+t.dataset.v);
+  if(v) v.classList.add('on');
+  try{ window.scrollTo({top:0,behavior:'smooth'}); }catch{ window.scrollTo(0,0); }
+});
 
 $('gpBtn').onclick=()=>{ if(!gConnected){ window.location='/api/google/auth'; } else { addFromGoogle(); } };
 $('drop').onclick=()=>$('file').click();
@@ -573,6 +610,8 @@ $('schedule').onclick=async()=>{
       body:JSON.stringify({ type, targets, media:staged.map(s=>({url:s.url,publicId:s.publicId})), caption:$('caption').value, scheduledAt:$('when').value })});
     toast('Scheduled! ✅');
     staged=[]; renderThumbs(); $('caption').value=''; $('when').value=''; loadLists();
+    // Jump to the Scheduled tab so the new post is right there.
+    const st=document.querySelector('#subtabs .subtab[data-v="scheduled"]'); if(st) st.click();
   }catch(e){ toast(e.message,false); }
   btn.disabled=false; btn.textContent='Schedule it';
 };
