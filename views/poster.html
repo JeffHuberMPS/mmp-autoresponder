@@ -228,11 +228,18 @@
 <body>
 <div class="wrap">
 
-  <div class="tabs">
-    <a href="/ig"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9 9 0 0 1-3.8-.8L3 20.5l1.4-4.6A8.4 8.4 0 0 1 3.6 11 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/><path d="M8.5 11.5h.01M12 11.5h.01M15.5 11.5h.01"/></svg>Auto-Responder</a>
-    <a href="/poster" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="5.4"/><circle cx="12" cy="12" r="4"/><circle cx="17.4" cy="6.6" r="1.1" fill="currentColor" stroke="none"/></svg>Scheduler</a>
+  <!-- Two apps in one (mobile): switch between Auto-Responder and Scheduler.
+       Hidden in embed mode (desktop opens each via its own Jarvis button). -->
+  <div class="tabs" id="appTabs">
+    <a href="#" data-app="ar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9 9 0 0 1-3.8-.8L3 20.5l1.4-4.6A8.4 8.4 0 0 1 3.6 11 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/><path d="M8.5 11.5h.01M12 11.5h.01M15.5 11.5h.01"/></svg>Auto-Responder</a>
+    <a href="#" class="on" data-app="sched"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="5.4"/><circle cx="12" cy="12" r="4"/><circle cx="17.4" cy="6.6" r="1.1" fill="currentColor" stroke="none"/></svg>Scheduler</a>
   </div>
 
+  <!-- Auto-Responder loads in-place here so the dual-app lives entirely in this
+       file (which the other tool never rewrites). Lazy-loaded on first open. -->
+  <iframe id="arFrame" title="Auto-Responder" style="display:none;width:100%;border:0;min-height:82vh;border-radius:16px;background:#0d121d"></iframe>
+
+  <div id="schedApp">
   <div class="panel" id="profilePanel">
     <div class="head">
       <div class="left">
@@ -332,6 +339,7 @@
     </div>
     <div class="muted" style="margin-top:8px">Stops stale content from posting late. 0 = always post overdue ones.</div>
   </div>
+  </div><!-- /#schedApp -->
 
 </div>
 
@@ -588,6 +596,23 @@ async function loadLists(){
   document.querySelectorAll('[data-cancel]').forEach(b=>b.onclick=async()=>{ try{ await api('/api/poster/cancel',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:b.dataset.cancel})}); toast('Canceled'); loadLists(); }catch(e){ toast(e.message,false);} });
   document.querySelectorAll('[data-now]').forEach(b=>b.onclick=async()=>{ b.disabled=true; b.textContent='Posting…'; try{ const r=await fetch('/api/poster/publish-now',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:b.dataset.now})}); const j=await r.json(); toast(j.ok?'Posted! 🎉':(j.error||'Failed'), !!j.ok); }catch(e){ toast(e.message,false);} loadLists(); });
 }
+
+// Top app tabs (mobile "two apps in one"): Scheduler (native) vs Auto-Responder
+// (loaded in-place as an iframe). All here in poster.html so it can't be wiped.
+(function(){
+  const tabs = document.querySelectorAll('#appTabs a');
+  if(!tabs.length) return;
+  tabs.forEach(t=>t.addEventListener('click',(e)=>{
+    e.preventDefault();
+    tabs.forEach(x=>x.classList.remove('on')); t.classList.add('on');
+    const ar = t.dataset.app==='ar';
+    const f=document.getElementById('arFrame'), s=document.getElementById('schedApp');
+    if(ar && !f.getAttribute('src')) f.setAttribute('src','/ig');  // lazy-load once
+    f.style.display = ar?'block':'none';
+    s.style.display = ar?'none':'block';
+    try{ window.scrollTo({top:0,behavior:'smooth'}); }catch{ window.scrollTo(0,0); }
+  }));
+})();
 
 // Sub-tab switching: show one section at a time, keep the page short.
 document.querySelectorAll('#subtabs .subtab').forEach(t=>t.onclick=()=>{
