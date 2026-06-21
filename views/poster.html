@@ -372,7 +372,15 @@ let gpImporting = false; // guard so we never import twice
 // Close the Google Photos tab. Closing the active tab returns the browser to
 // this (the scheduler) tab automatically — no manual switch, no extra clicks.
 function closeGoogleTab(){
-  try{ if(gpPicker && !gpPicker.closed) gpPicker.close(); }catch{}
+  try{
+    if(gpPicker && !gpPicker.closed){
+      // 1) point the popup at our own self-closing page (most reliable — it's
+      //    our origin, so window.close() there always works), then 2) also try
+      //    a direct close as a belt-and-suspenders.
+      try{ gpPicker.location.href = '/picker-close.html'; }catch{}
+      try{ gpPicker.close(); }catch{}
+    }
+  }catch{}
   gpPicker=null;
   try{ window.focus(); }catch{}
 }

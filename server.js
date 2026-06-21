@@ -201,6 +201,15 @@ app.get('/ig', (req, res) => sendPage(res, 'ig.html'));
 app.get('/autoresponder', (req, res) => sendPage(res, 'ig.html'));
 app.get('/poster', (req, res) => sendPage(res, 'poster.html'));
 
+// Tiny self-closing page. The scheduler points the Google picker popup here the
+// instant your pick is detected; because this page is OUR origin and the popup
+// was opened by our script, window.close() reliably closes it — eliminating
+// Google's lingering "Done!" page with no action from you.
+app.get('/picker-close.html', (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.type('html').send('<!doctype html><meta charset="utf-8"><title>Done</title><body style="margin:0;background:#0d121d"><script>try{window.close()}catch(e){}setTimeout(function(){try{window.close()}catch(e){}},120)</script></body>');
+});
+
 // ── "Install on phone" support (PWA) — makes Add-to-Home-Screen give a real
 // full-screen app icon, so it feels like a native app. ──
 app.get('/manifest.webmanifest', (req, res) =>
