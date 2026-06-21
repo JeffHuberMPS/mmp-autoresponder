@@ -10,7 +10,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { config } from './config.js';
 import {
-  verifyWebhook, verifySignature, parseEvents, sendMessage, sendPrivateReply, replyToComment, instagramLive, getAccountInfo,
+  verifyWebhook, verifySignature, parseEvents, sendMessage, sendPrivateReply, replyToComment, instagramLive, getAccountInfo, scanCaptionsForKeywords,
 } from './services/instagram.js';
 import {
   handleIncoming, handleEcho, rememberSent, getSettings, saveSettings,
@@ -111,6 +111,9 @@ app.post('/api/autoresponder/keywords', (req, res) => {
 });
 app.get('/api/instagram/metrics', async (req, res) => {
   res.json(await getAccountInfo().catch((e) => ({ ok: false, connected: false, error: e.message })));
+});
+app.get('/api/instagram/scan-keywords', async (req, res) => {
+  res.json(await scanCaptionsForKeywords().catch((e) => ({ ok: false, connected: false, error: e.message })));
 });
 
 // Follow-up nudges — run any that are due. A cron/uptime ping hits this to both

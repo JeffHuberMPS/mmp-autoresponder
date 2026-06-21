@@ -244,3 +244,45 @@ export async function getAccountInfo() {
     })),
   };
 }
+
+// Pull candidate keyword call-to-actions out of a caption — words you told people
+// to comment/DM (e.g. "comment SLEEP", "type RESET", "DM 'grow'").
+const CTA_STOP = new Set(['BELOW', 'NOW', 'HERE', 'THIS', 'THAT', 'AND', 'FOR', 'YOU', 'YOUR', 'THE', 'WORD', 'ME', 'MY', 'IT', 'LINK', 'BIO', 'DM', 'DMS']);
+function extractKeywords(caption) {
+  if (!caption) return [];
+  const out = new Set();
+  // verb + optional filler ("the word", "me", "below") + a CAPS word or quoted word
+  const re = /\b(?:comment|type|drop|reply|dm|send|say|write|text)\b[^A-Za-z0-9"'“]*(?:the word\s+|me\s+|below\s+)?["'“]?([A-Za-z][A-Za-z0-9]{1,18})["'”]?/gi;
+  let m;
+  while ((m = re.exec(caption)) !== null) {
+    const raw = m[1];
+    // Heuristic: keep ALL-CAPS words (classic CTA style) or quoted words.
+    if (raw === raw.toUpperCase() && raw.length >= 2 && !CTA_STOP.has(raw.toUpperCase())) {
+      out.add(raw);
+    }
+  }
+  return [...out];
+}
+
+// Scan every post's caption and compile the keyword CTAs you've used, with which
+// posts each came from. Powers the dashboard "Scan my posts for keywords" button.
+export async function scanCaptionsForKeywords() {
+  if (!instagramLive()) return { ok: false, connected: false, error: 'No Instagram token set' };
+  const base = config.igGraphBase;
+  const t = encodeURIComponent(config.igAccessToken);
+  const res = await fetch(`${base}/me/media?fields=id,caption,permalink,timestamp&limit=50&access_token=${t}`);
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.error?.message || `media HTTP ${res.status}`);
+  const posts = Array.isArray(data.data) ? data.data : [];
+  const map = new Map();
+  for (const p of posts) {
+    for (const kw of extractKeywords(p.caption)) {
+      const key = kw.toLowerCase();
+      if (!map.has(key)) map.set(key, { keyword: key, display: kw, posts: [] });
+      map.get(key).posts.push({ permalink: p.permalink, snippet: (p.caption || '').replace(/\s+/g, ' ').slice(0, 90) });
+    }
+  }
+  const found = [...map.values()].map((x) => ({ keyword: x.keyword, display: x.display, count: x.posts.length, posts: x.posts }));
+  found.sort((a, b) => b.count - a.count);
+  return { ok: true, connected: true, scanned: posts.length, found };
+}
