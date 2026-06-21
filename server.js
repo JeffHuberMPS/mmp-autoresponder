@@ -17,6 +17,7 @@ import {
   listConversations, getConversation, listLeads,
   getOffers, getKeywords, saveOffers, saveKeywords, runFollowups, getCommentAutomation, autoScanAndAddKeywords,
 } from './services/autoresponder.js';
+import { getAnalytics, recordComment, recordClick, resetAnalytics, initAnalytics } from './services/analytics.js';
 import * as poster from './services/poster.js';
 import * as gphotos from './services/googlePhotos.js';
 
@@ -42,7 +43,8 @@ async function handleCommentEvent(ev) {
   _seenComments.add(ev.commentId);
   if (_seenComments.size > 500) _seenComments.clear();
   try {
-    const result = await handleIncoming(ev.contactId, ev.text, {});
+    recordComment(ev.mediaId, ev.permalink);
+    const result = await handleIncoming(ev.contactId, ev.text, { isComment: true });
     if (result.reply) {
       rememberSent(result.reply);
       await sendPrivateReply(ev.commentId, result.reply, result.quickReplies).catch((e) => console.error('⚠ comment DM failed:', e.message));
@@ -88,7 +90,7 @@ app.post('/api/autoresponder/test', async (req, res) => {
   try {
     const { text, contactId = 'test-user', payload } = req.body || {};
     if ((!text || !text.trim()) && !payload) return fail(res, new Error('Send some text to test with'), 400);
-    ok(res, await handleIncoming(contactId, (text || '').trim(), { payload }));
+    ok(res, await handleIncoming(contactId, (text || '').trim(), { payload, track: false }));
   } catch (err) { fail(res, err); }
 });
 app.get('/api/autoresponder/settings', (req, res) => ok(res, { settings: getSettings() }));
@@ -119,6 +121,19 @@ app.get('/api/keywords/autoscan', async (req, res) => res.json(await autoScanAnd
 app.post('/api/keywords/autoscan', async (req, res) => res.json(await autoScanAndAddKeywords().catch((e) => ({ ran: false, error: e.message }))));
 setInterval(() => { autoScanAndAddKeywords().catch((e) => console.error('⚠ autoscan:', e.message)); }, 60 * 60_000);
 autoScanAndAddKeywords().catch(() => {}); // run once on boot
+
+// ── Analytics ──
+// Tracked link redirect: bot sends /go/<offerId>; logs a real click then bounces
+// the person to the offer's actual link (Gumroad / Amazon / etc.).
+app.get('/go/:id', (req, res) => {
+  recordClick(req.params.id);
+  const offer = (getOffers() || []).find((o) => o.id === req.params.id);
+  if (offer && offer.link) return res.redirect(302, offer.link);
+  res.status(404).send('Link not found');
+});
+app.get('/api/analytics', (req, res) => res.json(getAnalytics()));
+app.post('/api/analytics/reset', (req, res) => { resetAnalytics(); res.json({ ok: true }); });
+initAnalytics().catch(() => {}); // load persisted analytics (Upstash) at boot
 
 // Follow-up nudges — run any that are due. A cron/uptime ping hits this to both
 // keep the free instance awake AND fire scheduled nudges.

@@ -22,6 +22,10 @@ export const config = {
   autoresponderFile: path.join(root, 'data', 'autoresponder.json'),
   conversationsFile: path.join(root, 'data', 'ig-conversations.json'),
   leadsFile: path.join(root, 'data', 'ig-leads.json'),
+  analyticsFile: path.join(root, 'data', 'ig-analytics.json'),
+
+  // Public URL of THIS bot — used to build tracked redirect links (/go/:id).
+  publicBase: process.env.PUBLIC_BASE || process.env.PUBLIC_BASE_URL || 'https://mmp-autoresponder.onrender.com',
 
   // ── Auto-Poster (schedule posts to feed + story) ──
   // Cloudinary = free image hosting. It gives Instagram a public link to each

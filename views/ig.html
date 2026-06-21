@@ -226,6 +226,24 @@
   .tabpane{display:none}
   .tabpane.on{display:block;animation:tabin .22s ease}
   @keyframes tabin{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  /* analytics */
+  .bar-row{display:flex;align-items:center;gap:10px;margin:9px 0;font-size:13px}
+  .bar-label{flex:0 0 120px;color:#c7d2e6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:700}
+  .bar-track{flex:1;height:11px;background:#0e1a32;border:1px solid var(--tile-border);border-radius:6px;overflow:hidden}
+  .bar-fill{height:100%;background:linear-gradient(90deg,#2f7fd6,#6db8ff);border-radius:6px}
+  .bar-val{flex:0 0 auto;color:var(--blue-bright);font-weight:800;min-width:28px;text-align:right}
+  .an-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 0;
+    border-bottom:1px solid rgba(120,170,245,0.12);font-size:13px;color:#c7d2e6}
+  .an-row:last-child{border-bottom:0}
+  .an-row a{color:var(--blue-bright);text-decoration:none}
+  .an-row a:hover{text-decoration:underline}
+  .an-stat{color:var(--muted);white-space:nowrap}
+  .an-stat b{color:#eaf3ff;font-weight:800}
+  .an-stat .pct{color:var(--green)}
+  .series{display:flex;align-items:flex-end;gap:5px;height:96px}
+  .series .col{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:5px;height:100%}
+  .series .colbar{width:100%;background:linear-gradient(180deg,#6db8ff,#2f7fd6);border-radius:3px 3px 0 0;min-height:2px}
+  .series .colday{font-size:9px;color:var(--muted);white-space:nowrap}
   .foot{color:#4a5570;font-size:10.5px;text-align:center;margin-top:28px;letter-spacing:1.3px;text-transform:uppercase}
   ::-webkit-scrollbar{width:8px;height:8px}
   ::-webkit-scrollbar-thumb{background:rgba(120,170,245,0.22);border-radius:8px}
@@ -258,6 +276,7 @@
     <button class="tab" data-tab="keywords"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.8" cy="15.8" r="3.4"/><path d="M10.3 13.4 20 3.7"/><path d="M17 5.5l2.5 2.5"/><path d="M14.5 8l2 2"/></svg> Keyword automation</button>
     <button class="tab" data-tab="responses"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9 9 0 0 1-3.8-.8L3 20.5l1.4-4.6A8.4 8.4 0 0 1 3.6 11 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/><path d="M8.5 11.5h.01M12 11.5h.01M15.5 11.5h.01"/></svg> Responses</button>
     <button class="tab" data-tab="leads"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5l2.5 5.4 5.9.6-4.4 4 1.3 5.8L12 16.9l-5.3 2.4 1.3-5.8-4.4-4 5.9-.6L12 3.5z"/></svg> Leads</button>
+    <button class="tab" data-tab="analytics"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16"/><path d="M7 20v-6"/><path d="M12 20V8"/><path d="M17 20v-10"/></svg> Analytics</button>
   </div>
 
   <!-- ───────── HOME ───────── -->
@@ -366,6 +385,30 @@
       <div class="muted">People the bot flagged as interested — ready for follow-up.</div>
       <div id="leads" style="margin-top:14px"></div>
     </div>
+  </div>
+
+  <!-- ───────── ANALYTICS ───────── -->
+  <div class="tabpane" id="tab-analytics">
+    <div class="sec">Performance at a glance</div>
+    <div class="tiles">
+      <div class="tile"><div class="num" id="anLeads">—</div><div class="lbl">Leads</div></div>
+      <div class="tile"><div class="num" id="anSent">—</div><div class="lbl">Links sent</div></div>
+      <div class="tile"><div class="num" id="anClicks">—</div><div class="lbl">Link clicks</div></div>
+      <div class="tile"><div class="num" id="anCtr">—</div><div class="lbl">Click rate</div></div>
+      <div class="tile"><div class="num" id="anFollows">—</div><div class="lbl">Follows from gate</div></div>
+    </div>
+
+    <div class="sec">Top keywords (what people want most)</div>
+    <div class="panel"><div id="anKeywords"><div class="empty">No keyword fires yet — they'll show up here as people use them.</div></div></div>
+
+    <div class="sec">Link performance — sent vs actually clicked</div>
+    <div class="panel"><div id="anOffers"><div class="empty">No links sent yet.</div></div></div>
+
+    <div class="sec">Top posts (most DMs driven)</div>
+    <div class="panel"><div id="anPosts"><div class="empty">No comment-driven DMs yet.</div></div></div>
+
+    <div class="sec">Last 14 days (DMs + comments)</div>
+    <div class="panel"><div id="anSeries" class="series"></div></div>
   </div>
 
   <div class="foot">Live · refreshes every 5 seconds · <span id="clock"></span></div>
@@ -541,7 +584,32 @@ document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
   document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on', x===t));
   const id='tab-'+t.dataset.tab;
   document.querySelectorAll('.tabpane').forEach(p=>p.classList.toggle('on', p.id===id));
+  if(t.dataset.tab==='analytics') loadAnalytics();
 });
+
+// ── Analytics ──
+function anBar(label,val,max){const w=Math.round((val/Math.max(1,max))*100);
+  return '<div class="bar-row"><span class="bar-label">'+esc(label)+'</span><span class="bar-track"><span class="bar-fill" style="width:'+w+'%"></span></span><span class="bar-val">'+val+'</span></div>';}
+async function loadAnalytics(){
+  const a=await jget('/api/analytics'); if(!a||!a.ok) return;
+  const t=a.totals, S=(id,v)=>{const e=$(id); if(e)e.textContent=v;};
+  S('anLeads',t.leads); S('anSent',t.offersSent); S('anClicks',t.clicks); S('anCtr',t.ctr+'%'); S('anFollows',t.gateFollows);
+  const km=Math.max(1,...a.topKeywords.map(k=>k.count));
+  $('anKeywords').innerHTML = a.topKeywords.length ? a.topKeywords.map(k=>anBar(k.keyword,k.count,km)).join('')
+    : '<div class="empty">No keyword fires yet — they\'ll show up here as people use them.</div>';
+  $('anOffers').innerHTML = a.offers.length ? a.offers.map(o=>{
+    const name=(_offers.find(x=>x.id===o.offerId)||{}).name||o.offerId;
+    return '<div class="an-row"><span>'+esc(name)+'</span><span class="an-stat">sent <b>'+o.sent+'</b> · clicks <b>'+o.clicks+'</b> · <b class="pct">'+o.ctr+'%</b></span></div>';
+  }).join('') : '<div class="empty">No links sent yet.</div>';
+  $('anPosts').innerHTML = a.perPost.length ? a.perPost.map(p=>{
+    const link=p.permalink ? '<a href="'+esc(p.permalink)+'" target="_blank" rel="noopener">'+esc(p.permalink.replace(/^https?:\/\/(www\.)?/,'').slice(0,38))+'</a>' : 'post …'+esc(String(p.mediaId).slice(-6));
+    return '<div class="an-row"><span>'+link+'</span><span class="an-stat">DMs <b>'+p.dms+'</b></span></div>';
+  }).join('') : '<div class="empty">No comment-driven DMs yet.</div>';
+  const sm=Math.max(1,...a.series.map(d=>d.dms+d.comments));
+  $('anSeries').innerHTML = a.series.map(d=>{const v=d.dms+d.comments;
+    return '<div class="col" title="'+d.date+': '+v+'"><div class="colbar" style="height:'+Math.round((v/sm)*100)+'%"></div><div class="colday">'+d.date.slice(5)+'</div></div>';
+  }).join('');
+}
 
 function tick(){ $('clock').textContent = new Date().toLocaleTimeString(); }
 async function refreshAll(){ await Promise.all([refreshStatus(),refreshMetrics(),refreshFeed(),refreshLeads()]); }

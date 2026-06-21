@@ -15,6 +15,16 @@ import fs from 'node:fs';
 import Anthropic from '@anthropic-ai/sdk';
 import { config } from '../config.js';
 import { userFollowsBusiness, sendMessage, scanCaptionsForKeywords } from './instagram.js';
+import { recordDM, recordKeyword, recordOfferSent, recordGateHit, recordGateFollow, recordLead, recordFollowup } from './analytics.js';
+
+// Build a tracked redirect link (so we can count real clicks) for an offer.
+function trackedLink(offerId) {
+  return `${config.publicBase}/go/${encodeURIComponent(offerId)}`;
+}
+
+// When the dashboard "Try your bot" tester calls in, we skip analytics so test
+// runs don't inflate the real numbers. Set per handleIncoming() call.
+let _track = true;
 
 // ── Default settings, written to disk the first time the app runs. This is the
 // stuff you'll personalize: your business, your tone, your canned replies.
@@ -267,7 +277,7 @@ function saveLead(lead) {
   const leads = readJson(config.leadsFile, []);
   const existing = leads.find((l) => l.contactId === lead.contactId);
   if (existing) Object.assign(existing, lead);
-  else leads.push(lead);
+  else { leads.push(lead); if (_track) recordLead(); } // count only brand-new leads
   writeJson(config.leadsFile, leads);
 }
 export function listLeads() {
@@ -374,8 +384,10 @@ function executeChoice(s, convo, contactId, now, choice, confirmed) {
       convo.offerGrabbedAt = { ...(convo.offerGrabbedAt || {}), [o.id]: now }; // time upsells from here
     }
     saveLead({ contactId, name: convo.name, interest: 'wants ' + offers.map((o) => o.name).join(' + '), tag: 'offer-' + offers[0].id, at: now });
+    if (_track) offers.forEach((o) => recordOfferSent(o.id));
     const intro = confirmed ? (s.flow?.followConfirmed || 'Here you go:') : (choice.message || 'Here you go:');
-    const body = offers.map((o) => o.link || '(link coming soon)').join('\n');
+    // Send TRACKED links (route through the bot) so we can count real clicks.
+    const body = offers.map((o) => (o.link ? trackedLink(o.id) : '(link coming soon)')).join('\n');
     return { reply: (intro + '\n' + body).trim(), via: 'offer', offers: offers.map((o) => o.id) };
   }
   // action === 'link'
@@ -392,11 +404,13 @@ async function gateAndDeliver(s, convo, contactId, now, choice, justFollowed = f
   if (mustFollow) {
     const follows = await userFollowsBusiness(contactId);
     if (follows === false) {
+      if (_track && convo.stage !== 'awaitFollow') recordGateHit(); // count each new person we gate
       convo.stage = 'awaitFollow';
       convo.pendingChoice = choice;
       return { reply: s.flow?.followMessage || 'Follow me first and I will send it over.', via: 'gate-follow' };
     }
   }
+  if (_track && justFollowed) recordGateFollow(); // they came back after following → converted
   convo.stage = null;
   convo.pendingChoice = null;
   return executeChoice(s, convo, contactId, now, choice, justFollowed);
@@ -503,11 +517,13 @@ async function aiReply(s, convo, text) {
 // incoming message. Returns { reply, ... } — or { reply: null } if the bot
 // should stay silent (disabled, handed off, or the person opted out).
 export async function handleIncoming(contactId, text, opts = {}) {
+  _track = opts.track !== false; // tester passes track:false
   const s = getSettings();
   const convos = loadConversations();
   const convo = convos[contactId] || { history: [], tags: [], firstAt: opts.now };
   const now = opts.now || new Date().toISOString();
   const result = { contactId, reply: null, actions: [], via: null };
+  if (_track && !opts.isComment) recordDM(); // count real DMs (comments counted separately)
 
   const finish = (extra = {}) => {
     convo.lastAt = now;
@@ -561,6 +577,7 @@ export async function handleIncoming(contactId, text, opts = {}) {
     const kwm = matchKeyword(s, text);
     if (kwm && kwm.offerIds.length) {
       convo.greeted = true;
+      if (_track) recordKeyword(kwm.keyword.trigger);
       const res = await gateAndDeliver(s, convo, contactId, now, {
         action: 'offer', offerIds: kwm.offerIds, message: kwm.keyword.message, requireFollow: !!s.flow?.requireFollow,
       });
@@ -597,6 +614,7 @@ export async function handleIncoming(contactId, text, opts = {}) {
   // your own) — behind the same follow-gate as the menu.
   const kw = matchKeyword(s, text);
   if (kw && kw.offerIds.length) {
+    if (_track) recordKeyword(kw.keyword.trigger);
     const choice = {
       action: 'offer',
       offerIds: kw.offerIds,
@@ -724,6 +742,7 @@ export async function runFollowups(opts = {}) {
       rememberSent(due.text); // so the echo isn't mistaken for Jeff typing
       await sendMessage(contactId, due.text, null, { humanAgent: true });
       due.mark();
+      recordFollowup();
       convo.lastNudgeAt = new Date(now).toISOString();
       convo.history.push({ role: 'assistant', content: due.text, at: convo.lastNudgeAt, drip: due.kind });
       sent++;
