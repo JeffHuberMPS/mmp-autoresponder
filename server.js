@@ -140,6 +140,10 @@ app.post('/api/poster/schedule', async (req, res) => {
 app.get('/api/poster/list', async (req, res) => {
   try { ok(res, await poster.listPosts()); } catch (err) { fail(res, err); }
 });
+app.get('/api/poster/analytics', async (req, res) => {
+  try { ok(res, await poster.getAnalytics({ limit: Number(req.query.limit) || 50 })); }
+  catch (err) { fail(res, err); }
+});
 app.post('/api/poster/cancel', async (req, res) => {
   try { ok(res, { post: await poster.cancelPost((req.body || {}).id) }); }
   catch (err) { fail(res, err, 400); }

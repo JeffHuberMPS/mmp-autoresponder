@@ -249,6 +249,75 @@ export async function saveSettings(patch = {}) {
   return withDefaults(d.settings);
 }
 
+// ── Analytics ───────────────────────────────────────────────────────────
+// Likes/comments per post are always available; reach/saved are best-effort
+// (Instagram limits insights on small accounts). We also keep a daily follower
+// snapshot in our own data so we can chart growth even without insights access.
+const enc = (s) => encodeURIComponent(s);
+
+export async function getAnalytics({ limit = 50 } = {}) {
+  if (!config.igAccessToken) return { connected: false };
+  const igId = await getIgUserId();
+  const token = config.igAccessToken;
+
+  // Account totals
+  let followers = null, mediaCount = null, username = null;
+  try {
+    const a = await graphGet(`${GRAPH}/${igId}?fields=username,followers_count,media_count&access_token=${enc(token)}`);
+    followers = a.followers_count ?? null; mediaCount = a.media_count ?? null; username = a.username || null;
+  } catch { /* ignore */ }
+
+  // Recent posts with engagement counts (always available)
+  let media = [];
+  try {
+    const fields = 'id,caption,media_type,media_product_type,timestamp,permalink,like_count,comments_count,thumbnail_url,media_url';
+    const d = await graphGet(`${GRAPH}/${igId}/media?fields=${fields}&limit=${Math.min(limit, 100)}&access_token=${enc(token)}`);
+    media = (d.data || []).map((m) => ({
+      id: m.id,
+      caption: (m.caption || '').replace(/\s+/g, ' ').slice(0, 120),
+      type: m.media_product_type === 'STORY' ? 'story' : (m.media_type === 'CAROUSEL_ALBUM' ? 'carousel' : 'feed'),
+      timestamp: m.timestamp,
+      permalink: m.permalink || null,
+      thumb: m.thumbnail_url || m.media_url || null,
+      likes: m.like_count ?? 0,
+      comments: m.comments_count ?? 0,
+      reach: null, saved: null,
+    }));
+  } catch { /* media unavailable */ }
+
+  // Best-effort reach/saved for the most recent posts (skip silently if blocked)
+  for (const m of media.slice(0, 24)) {
+    if (m.type === 'story') continue;
+    try {
+      const ins = await graphGet(`${GRAPH}/${m.id}/insights?metric=reach,saved&access_token=${enc(token)}`);
+      for (const row of (ins.data || [])) {
+        const v = row.values?.[0]?.value;
+        if (row.name === 'reach') m.reach = v ?? null;
+        if (row.name === 'saved') m.saved = v ?? null;
+      }
+    } catch { /* insights not available for this account/post — fine */ }
+  }
+
+  // Daily follower snapshot → growth series, stored in our own data blob
+  let followerSeries = [];
+  try {
+    const data = await loadData();
+    data.analytics = data.analytics || { followerSeries: [] };
+    const series = data.analytics.followerSeries;
+    if (followers != null) {
+      const today = new Date().toISOString().slice(0, 10);
+      const last = series[series.length - 1];
+      if (!last || last.date !== today) series.push({ date: today, count: followers });
+      else last.count = followers;
+      if (series.length > 400) series.splice(0, series.length - 400);
+      await saveData(data);
+    }
+    followerSeries = series;
+  } catch { /* store unavailable */ }
+
+  return { connected: true, username, followers, mediaCount, media, followerSeries, fetchedAt: new Date().toISOString() };
+}
+
 export async function schedulePost({ type, media, caption, scheduledAt, targets } = {}) {
   const kind = type === 'story' ? 'story' : 'feed';
   const items = (Array.isArray(media) ? media : [media]).filter((m) => m && m.url);

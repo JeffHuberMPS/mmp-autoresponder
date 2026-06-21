@@ -175,7 +175,7 @@
   @keyframes gpspin{to{transform:rotate(360deg)}}
   #gpStatus button{padding:7px 14px;font-size:12.5px;margin-left:auto;flex:0 0 auto}
   /* Scheduler sub-tabs — open one section at a time so the page never gets long */
-  .subtabs{display:flex;gap:8px;margin-bottom:18px;flex-wrap:nowrap}
+  .subtabs{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap}
   .subtab{flex:1 1 0;min-width:0;display:flex;align-items:center;justify-content:center;gap:7px;text-align:center;
     padding:13px 8px;border-radius:12px;cursor:pointer;user-select:none;font-weight:700;font-size:13.5px;white-space:nowrap;
     color:#9db8e6;border:1px solid rgba(120,170,245,0.18);background:linear-gradient(180deg,#141c2c,#0d121d);transition:.15s}
@@ -191,6 +191,28 @@
     color:#a9dcff;border:1px solid rgba(59,130,246,.35);background:rgba(59,130,246,.10);text-decoration:none}
   .histlink:hover{border-color:var(--blue);background:rgba(59,130,246,.18)}
   @media(max-width:520px){ .subtab{font-size:12px;padding:12px 5px;gap:5px} }
+  /* ── Analytics ── */
+  .akpis{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));margin-bottom:8px}
+  .akpi{border-radius:14px;padding:16px 14px;border:1px solid var(--tile-border);
+    background:linear-gradient(180deg, rgba(150,205,255,0.10) 0%, rgba(120,185,255,0) 30%),linear-gradient(180deg,#11244c 0%,#0a1730 100%);
+    box-shadow:inset 0 1px 0 rgba(170,210,255,0.16), 0 10px 24px rgba(0,0,0,0.4)}
+  .akpi .n{font-size:26px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums;
+    background:linear-gradient(180deg,#eaf6ff,#8fd0ff 55%,#2f7fd6 75%,#9ed3ff);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .akpi .l{font-size:10.5px;color:#9db8e6;margin-top:9px;text-transform:uppercase;letter-spacing:1px}
+  .asec{margin:22px 0 12px;font-size:13px;font-weight:800;color:#cfe4ff;letter-spacing:.6px;text-transform:uppercase}
+  .arow{display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--tile-border);border-radius:12px;background:rgba(8,18,38,0.5);margin-bottom:8px}
+  .arow img{width:50px;height:50px;border-radius:9px;object-fit:cover;flex:0 0 auto;border:1px solid var(--tile-border)}
+  .arow .rank{font-weight:800;color:#7ec8ff;width:18px;text-align:center;flex:0 0 auto}
+  .arow .cap{flex:1;min-width:0;font-size:12.5px;color:#dce8fb;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .arow .eng{font-weight:800;color:#eaf6ff;font-size:13px;white-space:nowrap}
+  .arow .eng small{display:block;color:#9db8e6;font-weight:600;font-size:10px;letter-spacing:.4px}
+  .bar{height:10px;border-radius:999px;background:rgba(120,170,245,0.14);overflow:hidden;flex:1}
+  .bar > span{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#3b82f6,#6db8ff)}
+  .brow{display:flex;align-items:center;gap:10px;margin-bottom:7px;font-size:12.5px;color:#cfe4ff}
+  .brow .bl{width:78px;flex:0 0 auto}
+  .brow .bv{width:54px;flex:0 0 auto;text-align:right;color:#9db8e6;font-variant-numeric:tabular-nums}
+  .amuted{color:var(--muted);font-size:12px}
+  .arefresh{margin-top:6px}
 
   /* ── scheduled / history list ── */
   .list{display:flex;flex-direction:column;gap:11px}
@@ -260,6 +282,7 @@
     <div class="subtab on" data-v="new">New post</div>
     <div class="subtab" data-v="scheduled">Scheduled <span class="cnt zero" id="cntScheduled">0</span></div>
     <div class="subtab" data-v="history">History <span class="cnt zero" id="cntHistory">0</span></div>
+    <div class="subtab" data-v="analytics">Analytics</div>
     <div class="subtab" data-v="settings">Settings</div>
   </div>
 
@@ -327,6 +350,12 @@
   <div class="panel view" id="view-history">
     <div class="sec">History</div>
     <div id="history" class="list"><div class="muted">Nothing posted yet.</div></div>
+  </div>
+
+  <!-- ANALYTICS -->
+  <div class="panel view" id="view-analytics">
+    <div class="sec">Analytics</div>
+    <div id="analyticsBody"><div class="amuted">Open this tab to load your numbers…</div></div>
   </div>
 
   <!-- SETTINGS -->
@@ -621,8 +650,82 @@ document.querySelectorAll('#subtabs .subtab').forEach(t=>t.onclick=()=>{
   t.classList.add('on');
   const v=document.getElementById('view-'+t.dataset.v);
   if(v) v.classList.add('on');
+  if(t.dataset.v==='analytics') loadAnalytics();
   try{ window.scrollTo({top:0,behavior:'smooth'}); }catch{ window.scrollTo(0,0); }
 });
+
+// ── Analytics ──
+let _analyticsLoaded=false;
+const DAYNAMES=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const engOf=(m)=>(m.likes||0)+(m.comments||0)+(m.saved||0);
+function aNum(n){ if(n==null) return '—'; if(n>=10000) return Math.round(n/1000)+'k'; if(n>=1000) return (n/1000).toFixed(1)+'k'; return ''+n; }
+const hourLabel=(h)=> h==null?'—':((h%12||12)+(h<12?'am':'pm'));
+
+function aSparkline(series){
+  const pts=series.map(p=>p.count); const min=Math.min(...pts),max=Math.max(...pts),range=Math.max(1,max-min);
+  const W=600,H=90,pad=6, step=pts.length>1?(W-2*pad)/(pts.length-1):0;
+  const co=pts.map((v,i)=>[pad+i*step, H-pad-((v-min)/range)*(H-2*pad)]);
+  const line=co.map((c,i)=>(i?'L':'M')+c[0].toFixed(1)+' '+c[1].toFixed(1)).join(' ');
+  const area=line+' L'+co[co.length-1][0].toFixed(1)+' '+(H-pad)+' L'+pad+' '+(H-pad)+' Z';
+  return '<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none" style="width:100%;height:90px;display:block">'+
+    '<path d="'+area+'" fill="rgba(59,130,246,0.16)"/><path d="'+line+'" fill="none" stroke="#6db8ff" stroke-width="2.5"/></svg>'+
+    '<div class="amuted">'+pts[0]+' → '+pts[pts.length-1]+' followers · '+series.length+' days tracked</div>';
+}
+
+async function loadAnalytics(force){
+  if(_analyticsLoaded && !force) return;
+  const box=$('analyticsBody');
+  box.innerHTML='<div class="amuted">Crunching your numbers… (reach can take a few seconds)</div>';
+  let d; try{ d=await api('/api/poster/analytics'); }
+  catch(e){ box.innerHTML='<div class="amuted" style="color:#ffb4b4">Couldn’t load analytics: '+e.message+'</div>'; return; }
+  _analyticsLoaded=true;
+  if(!d.connected){ box.innerHTML='<div class="amuted">Instagram isn’t connected yet.</div>'; return; }
+  const all=d.media||[]; const posts=all.filter(m=>m.type!=='story');
+  const avgEng=posts.length? Math.round(posts.reduce((s,m)=>s+engOf(m),0)/posts.length):0;
+  const byDay={}; posts.forEach(m=>{ const k=new Date(m.timestamp).getDay(); (byDay[k]=byDay[k]||{e:0,n:0}); byDay[k].e+=engOf(m); byDay[k].n++; });
+  let bestDay='—',bd=-1; Object.entries(byDay).forEach(([k,v])=>{ const a=v.e/v.n; if(a>bd){bd=a;bestDay=DAYNAMES[k];} });
+  const byHour={}; posts.forEach(m=>{ const h=new Date(m.timestamp).getHours(); (byHour[h]=byHour[h]||{e:0,n:0}); byHour[h].e+=engOf(m); byHour[h].n++; });
+  let bestHour=null,bh=-1; Object.entries(byHour).forEach(([k,v])=>{ const a=v.e/v.n; if(a>bh){bh=a;bestHour=+k;} });
+
+  let h='';
+  h+='<div class="akpis">'+
+    '<div class="akpi"><div class="n">'+aNum(d.followers)+'</div><div class="l">Followers</div></div>'+
+    '<div class="akpi"><div class="n">'+aNum(d.mediaCount)+'</div><div class="l">Total posts</div></div>'+
+    '<div class="akpi"><div class="n">'+aNum(avgEng)+'</div><div class="l">Avg engagement / post</div></div>'+
+    '<div class="akpi"><div class="n" style="font-size:19px">'+bestDay+' · '+hourLabel(bestHour)+'</div><div class="l">Best day &amp; time</div></div>'+
+  '</div>';
+
+  h+='<div class="asec">Follower growth</div>';
+  const series=d.followerSeries||[];
+  h+= series.length>=2 ? aSparkline(series)
+    : '<div class="amuted">Growth line fills in as you keep posting — one follower count is logged each day you open this.</div>';
+
+  h+='<div class="asec">Top posts</div>';
+  const top=[...posts].sort((a,b)=>engOf(b)-engOf(a)).slice(0,5);
+  if(!top.length) h+='<div class="amuted">No posts to rank yet.</div>';
+  else top.forEach((m,i)=>{
+    const reach=m.reach!=null?'<small>reach '+aNum(m.reach)+'</small>':'';
+    h+='<div class="arow"><span class="rank">'+(i+1)+'</span>'+
+      (m.thumb?'<img src="'+m.thumb+'" alt="">':'<div style="width:50px;height:50px;border-radius:9px;background:#0a1730;flex:0 0 auto"></div>')+
+      '<div class="cap">'+(m.caption||'(no caption)')+'</div>'+
+      '<div class="eng">'+aNum(engOf(m))+' eng'+reach+'</div></div>';
+  });
+
+  h+='<div class="asec">When your posts do best</div>';
+  const maxA=Math.max(1,...Object.values(byDay).map(v=>v.e/v.n));
+  DAYNAMES.forEach((dn,k)=>{ const v=byDay[k]; const a=v?v.e/v.n:0; const pct=Math.round(a/maxA*100);
+    h+='<div class="brow"><span class="bl">'+dn+'</span><span class="bar"><span style="width:'+pct+'%"></span></span><span class="bv">'+(v?Math.round(a):'—')+'</span></div>';
+  });
+
+  h+='<div class="asec">By format</div>';
+  ['feed','carousel'].forEach(t=>{ const arr=all.filter(m=>m.type===t); const n=arr.length; const a=n?Math.round(arr.reduce((s,m)=>s+engOf(m),0)/n):0;
+    h+='<div class="brow"><span class="bl" style="text-transform:capitalize">'+t+'</span><span class="amuted">'+n+' posts · avg '+a+' eng</span></div>';
+  });
+
+  h+='<button class="ghost arefresh" id="aRefresh">↻ Refresh numbers</button>';
+  box.innerHTML=h;
+  const rb=$('aRefresh'); if(rb) rb.onclick=()=>loadAnalytics(true);
+}
 
 $('gpBtn').onclick=()=>{ if(!gConnected){ window.location='/api/google/auth'; } else { addFromGoogle(); } };
 $('drop').onclick=()=>$('file').click();
