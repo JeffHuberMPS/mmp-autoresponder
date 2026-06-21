@@ -115,7 +115,7 @@
   input,textarea{width:100%;background:#081226;border:1px solid var(--tile-border);color:var(--text);
     padding:12px 14px;border-radius:10px;font-size:15px;outline:none;font-family:inherit;transition:border .15s,box-shadow .15s}
   input::placeholder,textarea::placeholder{color:#5a6b88}
-  textarea{min-height:84px;resize:vertical;line-height:1.55}
+  textarea{min-height:340px;resize:vertical;line-height:1.6;font-size:16px}
   input:focus,textarea:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(59,130,246,0.16)}
 
   /* ── buttons ── */
@@ -401,21 +401,23 @@ async function addFromGoogle(){
     const s = await api('/api/google/picker/start',{method:'POST'});
     gpSession = s.sessionId;
     if(picker){ picker.location.href = s.pickerUri; } else { window.open(s.pickerUri,'_blank'); }
-    // Manual fallback button is always available while we wait, so the import
-    // never depends solely on auto-detecting the "Done" tap.
-    gpStatus('Pick your photos in the Google tab, then come back here.','work','I’ve picked them — load now', ()=>importGooglePhotos(s.sessionId));
+    gpStatus('Waiting on Google Photos — pick your shots and tap Done. I’ll bring you right back.','work');
+    // Poll FIRST, then wait — so the instant you tap Done we catch it (~1s) and
+    // close the Google tab, which drops you straight back here. No extra clicks.
     const deadline = Date.now()+5*60*1000; let ready=false;
     while(Date.now()<deadline){
-      await new Promise(r=>setTimeout(r, 1500));
-      if(gpSession!==s.sessionId) return; // a manual load already handled it
+      if(gpSession!==s.sessionId) return;
       try{ const p=await api('/api/google/picker/poll?sessionId='+encodeURIComponent(s.sessionId)); if(p.ready){ ready=true; break; } }catch{ /* keep polling */ }
-      if(picker && picker.closed) break; // you closed the tab yourself — go check
+      if(picker && picker.closed) break; // you closed the tab yourself
+      await new Promise(r=>setTimeout(r, 1000));
     }
+    // The moment we know you're done: close the Google tab. Closing the active
+    // tab returns the browser to this (the scheduler) tab automatically.
     try{ if(picker && !picker.closed) picker.close(); }catch{}
     try{ window.focus(); }catch{}
-    if(gpSession!==s.sessionId) return; // handled by the manual button meanwhile
+    if(gpSession!==s.sessionId) return;
     if(!ready){
-      // We didn't catch the signal — let Jeff trigger the import himself.
+      // Auto-detect somehow missed it — one tap to pull them in, never stuck.
       gpStatus('Finished picking? Tap to load your photos.','work','Load my photos', ()=>importGooglePhotos(s.sessionId));
       b.disabled=false; updateGoogleBtn(); return;
     }
