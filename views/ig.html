@@ -199,9 +199,14 @@
       inset 0 1px 0 rgba(185,220,255,0.28), inset 0 -1px 0 rgba(0,0,0,0.45)}
   .tabbar::after{content:'';position:absolute;left:12px;right:12px;top:0;height:1px;pointer-events:none;
     background:linear-gradient(90deg, transparent, rgba(200,228,255,0.7), transparent)}
-  .tab{flex:1 1 auto;min-width:128px;text-align:center;background:transparent;border:1px solid transparent;
+  .tab{flex:1 1 auto;min-width:128px;display:flex;align-items:center;justify-content:center;gap:9px;
+    background:transparent;border:1px solid transparent;
     color:var(--muted);font-size:13.5px;font-weight:800;letter-spacing:.4px;padding:12px 16px;cursor:pointer;
     border-radius:10px;transition:color .18s, background .18s, border-color .18s, box-shadow .18s}
+  .tab svg{width:16px;height:16px;flex:0 0 auto;opacity:.85}
+  .tab.on svg{opacity:1;filter:drop-shadow(0 0 6px rgba(90,165,255,0.55))}
+  #scanBtn svg{width:15px;height:15px;vertical-align:-3px;margin-right:7px}
+  .gate-badge svg{width:12px;height:12px;vertical-align:-2px;margin-right:4px}
   .tab:hover{color:#cfe0ff;background:rgba(120,170,245,0.08);border-color:rgba(120,170,245,0.18)}
   .tab.on{color:#eaf6ff;
     background:linear-gradient(180deg, rgba(150,205,255,0.14) 0%, rgba(120,185,255,0) 35%),
@@ -240,10 +245,10 @@
 
   <!-- Tab bar inside the Control Center -->
   <div class="tabbar">
-    <button class="tab on" data-tab="home">🏠 Home</button>
-    <button class="tab" data-tab="keywords">🔑 Keyword automation</button>
-    <button class="tab" data-tab="responses">💬 Responses</button>
-    <button class="tab" data-tab="leads">⭐ Leads</button>
+    <button class="tab on" data-tab="home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11 12 3l9 8"/><path d="M5 9.5V20h14V9.5"/><path d="M9.5 20v-5.5h5V20"/></svg> Home</button>
+    <button class="tab" data-tab="keywords"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.8" cy="15.8" r="3.4"/><path d="M10.3 13.4 20 3.7"/><path d="M17 5.5l2.5 2.5"/><path d="M14.5 8l2 2"/></svg> Keyword automation</button>
+    <button class="tab" data-tab="responses"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9 9 0 0 1-3.8-.8L3 20.5l1.4-4.6A8.4 8.4 0 0 1 3.6 11 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/><path d="M8.5 11.5h.01M12 11.5h.01M15.5 11.5h.01"/></svg> Responses</button>
+    <button class="tab" data-tab="leads"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5l2.5 5.4 5.9.6-4.4 4 1.3 5.8L12 16.9l-5.3 2.4 1.3-5.8-4.4-4 5.9-.6L12 3.5z"/></svg> Leads</button>
   </div>
 
   <!-- ───────── HOME ───────── -->
@@ -287,7 +292,7 @@
         <div class="muted">Comment/DM a trigger word → the bot sends the chosen link(s). One keyword can send <b style="color:var(--blue-bright)">several</b> (e.g. an affiliate link + your Reset).</div>
         <div class="toggle-wrap"><span class="lab">Auto-add</span><label class="switch"><input type="checkbox" id="scanToggle"><span class="slider"></span></label></div>
       </div>
-      <button class="btnsave" id="scanBtn" style="margin-top:12px">🔍 Scan &amp; add all from my posts</button>
+      <button class="btnsave" id="scanBtn" style="margin-top:12px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>Scan &amp; add all from my posts</button>
       <div id="scanResults" style="margin-top:12px"></div>
       <div id="keywords" style="margin-top:14px"></div>
       <div class="addrow" style="margin-top:14px">
@@ -305,7 +310,7 @@
     <div class="panel">
       <div class="hdrow">
         <div class="muted">The first thing someone gets when they DM or comment — a question with tappable buttons.</div>
-        <span class="gate-badge">🔒 Follow-gated</span>
+        <span class="gate-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9.5" rx="2"/><path d="M8 11V7.5a4 4 0 0 1 8 0V11"/></svg>Follow-gated</span>
       </div>
       <div class="field"><label>Question</label><input id="flowQuestion" type="text" /></div>
       <div id="flowButtons" style="margin-top:6px"></div>
