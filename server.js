@@ -15,7 +15,7 @@ import {
 import {
   handleIncoming, handleEcho, rememberSent, getSettings, saveSettings,
   listConversations, getConversation, listLeads,
-  getOffers, getKeywords, saveOffers, saveKeywords, runFollowups, getCommentAutomation,
+  getOffers, getKeywords, saveOffers, saveKeywords, runFollowups, getCommentAutomation, autoScanAndAddKeywords,
 } from './services/autoresponder.js';
 import * as poster from './services/poster.js';
 import * as gphotos from './services/googlePhotos.js';
@@ -115,6 +115,10 @@ app.get('/api/instagram/metrics', async (req, res) => {
 app.get('/api/instagram/scan-keywords', async (req, res) => {
   res.json(await scanCaptionsForKeywords().catch((e) => ({ ok: false, connected: false, error: e.message })));
 });
+app.get('/api/keywords/autoscan', async (req, res) => res.json(await autoScanAndAddKeywords().catch((e) => ({ ran: false, error: e.message }))));
+app.post('/api/keywords/autoscan', async (req, res) => res.json(await autoScanAndAddKeywords().catch((e) => ({ ran: false, error: e.message }))));
+setInterval(() => { autoScanAndAddKeywords().catch((e) => console.error('⚠ autoscan:', e.message)); }, 60 * 60_000);
+autoScanAndAddKeywords().catch(() => {}); // run once on boot
 
 // Follow-up nudges — run any that are due. A cron/uptime ping hits this to both
 // keep the free instance awake AND fire scheduled nudges.

@@ -14,7 +14,7 @@
 import fs from 'node:fs';
 import Anthropic from '@anthropic-ai/sdk';
 import { config } from '../config.js';
-import { userFollowsBusiness, sendMessage } from './instagram.js';
+import { userFollowsBusiness, sendMessage, scanCaptionsForKeywords } from './instagram.js';
 
 // ── Default settings, written to disk the first time the app runs. This is the
 // stuff you'll personalize: your business, your tone, your canned replies.
@@ -159,6 +159,12 @@ const DEFAULT_SETTINGS = {
     // Default = every comment on any post triggers a DM. (Can scope to a specific
     // post or keyword later if you want.)
   },
+
+  // ── KEYWORD AUTO-SCAN: periodically read your post captions and auto-add any
+  // new keyword CTAs (e.g. a new post says "comment CREATINE" → it's added). ──
+  keywordScan: {
+    enabled: true,
+  },
 };
 
 // ── Tiny JSON file helpers (load-or-default, atomic-ish save). ──
@@ -192,6 +198,11 @@ export function getSettings() {
       if (!_settings.followups) { _settings.followups = DEFAULT_SETTINGS.followups; changed = true; }
       if (!_settings.upsells) { _settings.upsells = DEFAULT_SETTINGS.upsells; changed = true; }
       if (!_settings.commentAutomation) { _settings.commentAutomation = DEFAULT_SETTINGS.commentAutomation; changed = true; }
+      if (!_settings.keywordScan) { _settings.keywordScan = DEFAULT_SETTINGS.keywordScan; changed = true; }
+      // Migrate keywords from single offerId → offerIds[] (so one keyword can send several links).
+      for (const k of _settings.keywords || []) {
+        if (!Array.isArray(k.offerIds)) { k.offerIds = k.offerId ? [k.offerId] : []; changed = true; }
+      }
       if (changed) writeJson(config.autoresponderFile, _settings);
     }
   }
@@ -204,6 +215,29 @@ export function getKeywords() { return getSettings().keywords || []; }
 export function getCommentAutomation() { return getSettings().commentAutomation || { enabled: false }; }
 export function saveOffers(offers) { return saveSettings({ offers: Array.isArray(offers) ? offers : [] }); }
 export function saveKeywords(keywords) { return saveSettings({ keywords: Array.isArray(keywords) ? keywords : [] }); }
+
+// Scan your post captions and AUTO-ADD any keyword CTAs that aren't set up yet
+// (each new keyword maps to your first/default offer). Runs on a timer + on
+// demand, so every new post's keyword shows up automatically. Idempotent.
+export async function autoScanAndAddKeywords() {
+  const s = getSettings();
+  if (s.keywordScan && s.keywordScan.enabled === false) return { ran: false, reason: 'disabled' };
+  let scan;
+  try { scan = await scanCaptionsForKeywords(); } catch (e) { return { ran: false, error: e.message }; }
+  if (!scan || !scan.ok || !Array.isArray(scan.found)) return { ran: true, added: 0 };
+  const keywords = getKeywords();
+  const have = new Set(keywords.map((k) => String(k.trigger).toLowerCase()));
+  const defaultOffer = (s.offers && s.offers[0] && s.offers[0].id) || 'discipline-bundle';
+  const added = [];
+  for (const f of scan.found) {
+    if (have.has(f.keyword)) continue;
+    keywords.push({ trigger: f.keyword, offerIds: [defaultOffer], message: '', auto: true });
+    have.add(f.keyword);
+    added.push(f.keyword);
+  }
+  if (added.length) saveKeywords(keywords);
+  return { ran: true, scanned: scan.scanned, added: added.length, addedKeywords: added };
+}
 export function saveSettings(patch) {
   const next = { ...getSettings(), ...patch };
   _settings = next;
@@ -272,17 +306,19 @@ function matchRule(rules, text) {
   return null;
 }
 
-// Keyword → offer: if the message contains a trigger word, return the matching
-// offer so the bot can auto-send its delivery link (the "comment SLEEP" play).
+// Offer ids a keyword sends (supports the new offerIds[] + legacy offerId).
+function keywordOfferIds(k) {
+  if (Array.isArray(k.offerIds) && k.offerIds.length) return k.offerIds;
+  return k.offerId ? [k.offerId] : [];
+}
+// Keyword → offers: if the message contains a trigger word, return that keyword
+// (it may deliver one OR several offer links — e.g. an affiliate link + the Reset).
 function matchKeyword(s, text) {
   const t = text.toLowerCase();
   for (const k of s.keywords || []) {
     const trig = String(k.trigger || '').toLowerCase().trim();
     if (!trig) continue;
-    if (t.includes(trig)) {
-      const offer = (s.offers || []).find((o) => o.id === k.offerId) || null;
-      return { keyword: k, offer };
-    }
+    if (t.includes(trig)) return { keyword: k, offerIds: keywordOfferIds(k) };
   }
   return null;
 }
@@ -327,13 +363,20 @@ function offerRequiresFollow(s, offerId) {
 // `confirmed` = we just verified a follow, so we lead with the "Locked in" line.
 function executeChoice(s, convo, contactId, now, choice, confirmed) {
   if (choice.action === 'offer') {
-    const offer = (s.offers || []).find((o) => o.id === choice.offerId);
-    if (!offer) return { reply: "Hmm, that offer isn't set up yet.", via: 'offer-missing' };
-    convo.tags = Array.from(new Set([...(convo.tags || []), 'offer:' + choice.offerId]));
-    convo.offerGrabbedAt = { ...(convo.offerGrabbedAt || {}), [choice.offerId]: now }; // time the upsell from here
-    saveLead({ contactId, name: convo.name, interest: 'wants ' + offer.name, tag: 'offer-' + choice.offerId, at: now });
-    const intro = confirmed ? (s.flow?.followConfirmed || 'Here you go:') : (choice.message || `Here you go — ${offer.name}:`);
-    return { reply: (intro + '\n' + (offer.link || '(link coming soon)')).trim(), via: 'offer', offer: choice.offerId };
+    // One choice can deliver several offers (e.g. an affiliate link + the Reset).
+    const ids = Array.isArray(choice.offerIds) && choice.offerIds.length
+      ? choice.offerIds
+      : (choice.offerId ? [choice.offerId] : []);
+    const offers = ids.map((id) => (s.offers || []).find((o) => o.id === id)).filter(Boolean);
+    if (!offers.length) return { reply: "Hmm, that offer isn't set up yet.", via: 'offer-missing' };
+    for (const o of offers) {
+      convo.tags = Array.from(new Set([...(convo.tags || []), 'offer:' + o.id]));
+      convo.offerGrabbedAt = { ...(convo.offerGrabbedAt || {}), [o.id]: now }; // time upsells from here
+    }
+    saveLead({ contactId, name: convo.name, interest: 'wants ' + offers.map((o) => o.name).join(' + '), tag: 'offer-' + offers[0].id, at: now });
+    const intro = confirmed ? (s.flow?.followConfirmed || 'Here you go:') : (choice.message || 'Here you go:');
+    const body = offers.map((o) => o.link || '(link coming soon)').join('\n');
+    return { reply: (intro + '\n' + body).trim(), via: 'offer', offers: offers.map((o) => o.id) };
   }
   // action === 'link'
   convo.tags = Array.from(new Set([...(convo.tags || []), 'picked:' + (choice.payload || 'link')]));
@@ -513,6 +556,17 @@ export async function handleIncoming(contactId, text, opts = {}) {
       convo.history.push({ role: 'assistant', content: res.reply, at: now });
       return finish(res);
     }
+    // (b2) Their message/comment contains a keyword trigger → deliver that offer(s)
+    //      directly (e.g. they commented "creatine"). Keywords beat the menu.
+    const kwm = matchKeyword(s, text);
+    if (kwm && kwm.offerIds.length) {
+      convo.greeted = true;
+      const res = await gateAndDeliver(s, convo, contactId, now, {
+        action: 'offer', offerIds: kwm.offerIds, message: kwm.keyword.message, requireFollow: !!s.flow?.requireFollow,
+      });
+      convo.history.push({ role: 'assistant', content: res.reply, at: now });
+      return finish(res);
+    }
     // (c) First contact (menu not shown yet) → show the question + buttons.
     if (!convo.menuShown) {
       convo.greeted = true;
@@ -539,15 +593,15 @@ export async function handleIncoming(contactId, text, opts = {}) {
     return finish({ reply, via: 'away' });
   }
 
-  // Keyword → OFFER: send the delivery link (the money path) — behind the same
-  // follow-gate as the menu.
+  // Keyword → OFFER(S): send the delivery link(s) — possibly several (affiliate +
+  // your own) — behind the same follow-gate as the menu.
   const kw = matchKeyword(s, text);
-  if (kw && kw.offer) {
+  if (kw && kw.offerIds.length) {
     const choice = {
       action: 'offer',
-      offerId: kw.offer.id,
+      offerIds: kw.offerIds,
       message: kw.keyword.message,
-      requireFollow: !!(s.flow?.enabled && (s.flow?.requireFollow || offerRequiresFollow(s, kw.offer.id))),
+      requireFollow: !!(s.flow?.enabled && s.flow?.requireFollow),
     };
     const res = await gateAndDeliver(s, convo, contactId, now, choice);
     convo.history.push({ role: 'assistant', content: res.reply, at: now });

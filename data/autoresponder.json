@@ -72,7 +72,9 @@
   "keywords": [
     {
       "trigger": "sleep",
-      "offerId": "discipline-bundle",
+      "offerIds": [
+        "discipline-bundle"
+      ],
       "message": "Here's your 7-Day Discipline Reset + the tracker bundle 👇"
     }
   ],
@@ -125,5 +127,8 @@
   "commentAutomation": {
     "enabled": true,
     "publicReply": "Just sent you a DM 📩"
+  },
+  "keywordScan": {
+    "enabled": true
   }
 }
