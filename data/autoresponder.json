@@ -64,8 +64,8 @@
   "offers": [
     {
       "id": "discipline-bundle",
-      "name": "Tracker + 7-Day Discipline Reset",
-      "description": "The MMP tracker bundle plus the free 7-Day Discipline Reset.",
+      "name": "Discipline Starter Kit (7-Day Reset + Tracker)",
+      "description": "The free Discipline Starter Kit bundle: 7-Day Discipline Reset + Modular Performance Tracker (Core).",
       "link": "https://mindsetlion3.gumroad.com/l/DisciplineStarterKit"
     },
     {
@@ -90,6 +90,86 @@
         "discipline-bundle"
       ],
       "message": "Here's the creatine I run 💪 + your free 7-Day Discipline Reset 👇"
+    },
+    {
+      "trigger": "operator",
+      "offerIds": [
+        "discipline-bundle"
+      ],
+      "message": "Here's your 7-Day Discipline Reset + the tracker bundle 👇",
+      "auto": true
+    },
+    {
+      "trigger": "stack",
+      "offerIds": [
+        "discipline-bundle"
+      ],
+      "message": "Here's your 7-Day Discipline Reset + the tracker bundle 👇",
+      "auto": true
+    },
+    {
+      "trigger": "faith",
+      "offerIds": [
+        "discipline-bundle"
+      ],
+      "message": "Here's your 7-Day Discipline Reset + the tracker bundle 👇",
+      "auto": true
+    },
+    {
+      "trigger": "protocol",
+      "offerIds": [
+        "discipline-bundle"
+      ],
+      "message": "Here's your 7-Day Discipline Reset + the tracker bundle 👇",
+      "auto": true
+    },
+    {
+      "trigger": "presence",
+      "offerIds": [
+        "discipline-bundle"
+      ],
+      "message": "Here's your 7-Day Discipline Reset + the tracker bundle 👇",
+      "auto": true
+    },
+    {
+      "trigger": "study",
+      "offerIds": [
+        "discipline-bundle"
+      ],
+      "message": "Here's your 7-Day Discipline Reset + the tracker bundle 👇",
+      "auto": true
+    },
+    {
+      "trigger": "fighter",
+      "offerIds": [
+        "discipline-bundle"
+      ],
+      "message": "Here's your 7-Day Discipline Reset + the tracker bundle 👇",
+      "auto": true
+    },
+    {
+      "trigger": "fuel",
+      "offerIds": [
+        "discipline-bundle"
+      ],
+      "message": "Here's your 7-Day Discipline Reset + the tracker bundle 👇",
+      "auto": true
+    },
+    {
+      "trigger": "charisma",
+      "offerIds": [
+        "discipline-bundle"
+      ],
+      "message": "Here's your 7-Day Discipline Reset + the tracker bundle 👇",
+      "auto": true
+    },
+    {
+      "trigger": "list",
+      "offerIds": [
+        "discipline-bundle"
+      ],
+      "message": "Here's your 7-Day Discipline Reset + the tracker bundle 👇",
+      "auto": true
     }
   ],
   "flow": {
