@@ -81,7 +81,7 @@
       "offerIds": [
         "discipline-bundle"
       ],
-      "message": "Here's your 7-Day Discipline Reset + the tracker bundle 👇"
+      "message": "Discipline starts the night before 🌙 Here's your 7-Day Reset + tracker bundle to dial it in 👇"
     },
     {
       "trigger": "creatine",
@@ -96,7 +96,7 @@
       "offerIds": [
         "discipline-bundle"
       ],
-      "message": "Here's your 7-Day Discipline Reset + the tracker bundle 👇",
+      "message": "Operators run the system, not their feelings ⚙️ Here's your 7-Day Reset + tracker 👇",
       "auto": true
     },
     {
@@ -104,7 +104,7 @@
       "offerIds": [
         "discipline-bundle"
       ],
-      "message": "Here's your 7-Day Discipline Reset + the tracker bundle 👇",
+      "message": "Stack the wins, one disciplined day at a time 📈 Your 7-Day Reset + tracker 👇",
       "auto": true
     },
     {
@@ -112,7 +112,7 @@
       "offerIds": [
         "discipline-bundle"
       ],
-      "message": "Here's your 7-Day Discipline Reset + the tracker bundle 👇",
+      "message": "Faith without discipline is just wishing 🙏 Here's your 7-Day Reset + tracker to walk it out 👇",
       "auto": true
     },
     {
@@ -120,7 +120,7 @@
       "offerIds": [
         "discipline-bundle"
       ],
-      "message": "Here's your 7-Day Discipline Reset + the tracker bundle 👇",
+      "message": "The Protocol starts now 🔱 Grab your 7-Day Reset + tracker bundle 👇",
       "auto": true
     },
     {
@@ -128,7 +128,7 @@
       "offerIds": [
         "discipline-bundle"
       ],
-      "message": "Here's your 7-Day Discipline Reset + the tracker bundle 👇",
+      "message": "Presence is built in the reps, not the highlight reel 🧠 Your 7-Day Reset + tracker 👇",
       "auto": true
     },
     {
@@ -136,7 +136,7 @@
       "offerIds": [
         "discipline-bundle"
       ],
-      "message": "Here's your 7-Day Discipline Reset + the tracker bundle 👇",
+      "message": "Study it, then live it 📖 Here's your 7-Day Reset + tracker bundle 👇",
       "auto": true
     },
     {
@@ -144,7 +144,7 @@
       "offerIds": [
         "discipline-bundle"
       ],
-      "message": "Here's your 7-Day Discipline Reset + the tracker bundle 👇",
+      "message": "Fighters are forged in the boring daily reps 🥊 Here's your 7-Day Reset + tracker 👇",
       "auto": true
     },
     {
@@ -152,7 +152,7 @@
       "offerIds": [
         "discipline-bundle"
       ],
-      "message": "Here's your 7-Day Discipline Reset + the tracker bundle 👇",
+      "message": "Fuel the fire and keep it lit 🔥 Your 7-Day Reset + tracker bundle 👇",
       "auto": true
     },
     {
@@ -160,7 +160,7 @@
       "offerIds": [
         "discipline-bundle"
       ],
-      "message": "Here's your 7-Day Discipline Reset + the tracker bundle 👇",
+      "message": "Real charisma is rooted in self-respect 💯 Build it — 7-Day Reset + tracker 👇",
       "auto": true
     },
     {
@@ -168,7 +168,7 @@
       "offerIds": [
         "discipline-bundle"
       ],
-      "message": "Here's your 7-Day Discipline Reset + the tracker bundle 👇",
+      "message": "A list means nothing without the work ✅ Here's your 7-Day Reset + tracker 👇",
       "auto": true
     }
   ],
@@ -181,7 +181,8 @@
         "payload": "RESET",
         "action": "offer",
         "offerId": "discipline-bundle",
-        "requireFollow": true
+        "requireFollow": true,
+        "message": "Respect 🤝 Here's your 7-Day Discipline Reset + the full tracker bundle 👇"
       },
       {
         "title": "MPS Trackers",
@@ -193,7 +194,7 @@
       }
     ],
     "followMessage": "Almost there! 🔒 Make sure you're following @modern.man.protocol, then reply DONE and I'll send it straight over.",
-    "followConfirmed": "Locked in. 💪 Here you go:",
+    "followConfirmed": "Locked in 💪 Here's your 7-Day Discipline Reset + the full tracker bundle. Go to work 👇",
     "handle": "modern.man.protocol",
     "requireFollow": true
   },
