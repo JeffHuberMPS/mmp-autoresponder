@@ -142,10 +142,14 @@ export async function importPicked(sessionId, limit = 10) {
   //    time — the main source of the lag). Order is preserved.
   const results = await Promise.all(picked.map(async (mf) => {
     try {
-      const imgRes = await fetch(`${mf.baseUrl}=d`, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(60000) });
+      // Download at 1600px (the picker supports =w/-h sizing) instead of the full
+      // original. Instagram displays at 1080px wide, so 1600 is crisp with no
+      // visible quality loss — but it's a fraction of the bytes, so download +
+      // Cloudinary upload are roughly twice as fast.
+      const imgRes = await fetch(`${mf.baseUrl}=w1600-h1600`, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(60000) });
       if (!imgRes.ok) return null;
       const buf = Buffer.from(await imgRes.arrayBuffer());
-      const dataUri = `data:${mf.mimeType || 'image/jpeg'};base64,${buf.toString('base64')}`;
+      const dataUri = `data:image/jpeg;base64,${buf.toString('base64')}`;
       const up = await uploadImage(dataUri);
       return { url: up.url, publicId: up.publicId };
     } catch { return null; }
