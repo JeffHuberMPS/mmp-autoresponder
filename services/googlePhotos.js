@@ -121,29 +121,36 @@ export async function pollPicker(sessionId) {
 // `limit` caps how many we take (1 for a single post, up to 10 for a carousel).
 export async function importPicked(sessionId, limit = 10) {
   const token = await accessToken();
-  const out = [];
+  // 1) Gather the picked image items (metadata only — fast, no downloads yet).
+  const picked = [];
   let pageToken = '';
-  while (out.length < limit) {
+  while (picked.length < limit) {
     const q = new URLSearchParams({ sessionId, pageSize: '100' });
     if (pageToken) q.set('pageToken', pageToken);
     const d = await gapi(`mediaItems?${q}`, { token });
-    const items = d.mediaItems || [];
-    for (const it of items) {
-      if (out.length >= limit) break;
+    for (const it of (d.mediaItems || [])) {
       const mf = it.mediaFile || {};
       if (mf.mimeType && !mf.mimeType.startsWith('image/')) continue; // images only for now
       if (!mf.baseUrl) continue;
-      // Download the original bytes (the picker baseUrl needs the token + "=d").
-      const imgRes = await fetch(`${mf.baseUrl}=d`, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(60000) });
-      if (!imgRes.ok) continue;
-      const buf = Buffer.from(await imgRes.arrayBuffer());
-      const dataUri = `data:${mf.mimeType || 'image/jpeg'};base64,${buf.toString('base64')}`;
-      const up = await uploadImage(dataUri);
-      out.push({ url: up.url, publicId: up.publicId });
+      picked.push(mf);
+      if (picked.length >= limit) break;
     }
     pageToken = d.nextPageToken || '';
     if (!pageToken) break;
   }
+  // 2) Download from Google + upload to Cloudinary ALL IN PARALLEL (was one-at-a-
+  //    time — the main source of the lag). Order is preserved.
+  const results = await Promise.all(picked.map(async (mf) => {
+    try {
+      const imgRes = await fetch(`${mf.baseUrl}=d`, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(60000) });
+      if (!imgRes.ok) return null;
+      const buf = Buffer.from(await imgRes.arrayBuffer());
+      const dataUri = `data:${mf.mimeType || 'image/jpeg'};base64,${buf.toString('base64')}`;
+      const up = await uploadImage(dataUri);
+      return { url: up.url, publicId: up.publicId };
+    } catch { return null; }
+  }));
+  const out = results.filter(Boolean);
   if (!out.length) throw new Error('No photos came through — try picking again.');
   return out;
 }
