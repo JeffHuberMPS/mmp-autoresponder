@@ -182,8 +182,8 @@
   #gpStatus button{padding:7px 14px;font-size:12.5px;margin-left:auto;flex:0 0 auto}
   /* Scheduler sub-tabs — open one section at a time so the page never gets long */
   .subtabs{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap}
-  .subtab{flex:1 1 0;min-width:0;display:flex;align-items:center;justify-content:center;gap:7px;text-align:center;
-    padding:13px 8px;border-radius:12px;cursor:pointer;user-select:none;font-weight:700;font-size:13.5px;white-space:nowrap;
+  .subtab{flex:1 1 auto;display:flex;align-items:center;justify-content:center;gap:7px;text-align:center;
+    padding:13px 12px;border-radius:12px;cursor:pointer;user-select:none;font-weight:700;font-size:13.5px;white-space:nowrap;
     color:#9db8e6;border:1px solid rgba(120,170,245,0.18);background:linear-gradient(180deg,#141c2c,#0d121d);transition:.15s}
   .subtab:hover{border-color:rgba(120,175,255,0.4);color:#cfe4ff}
   .subtab.on{color:#eaf6ff;border-color:var(--blue);background:linear-gradient(180deg, rgba(70,160,255,0.30), rgba(50,130,240,0.12));
@@ -818,12 +818,19 @@ $('schedule').onclick=async()=>{
   if(staged.some(s=>s.uploading)){ toast('Photos still uploading — one sec', false); return; }
   if(staged.some(s=>!s.url)){ toast('A photo didn’t upload — remove it and retry', false); return; }
   if(!$('when').value){ toast('Pick a date & time', false); return; }
+  // The picker gives a LOCAL wall-clock time with no timezone. Convert it to a
+  // precise UTC instant here (in YOUR browser's timezone) so the server — which
+  // runs in UTC — fires it at the time you actually meant, not hours off.
+  const whenLocal = new Date($('when').value);
+  if(isNaN(whenLocal.getTime())){ toast('Pick a valid date & time', false); return; }
+  if(whenLocal.getTime() < Date.now()-60000){ toast('That time is in the past — pick a future time', false); return; }
+  const scheduledAtISO = whenLocal.toISOString();
   const targets = target==='both' ? ['feed','story'] : [target];
   const type = targets.includes('feed') ? 'feed' : 'story';
   const btn=$('schedule'); btn.disabled=true; btn.textContent='Scheduling…';
   try{
     await api('/api/poster/schedule',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({ type, targets, media:staged.map(s=>({url:s.url,publicId:s.publicId})), caption:$('caption').value, scheduledAt:$('when').value })});
+      body:JSON.stringify({ type, targets, media:staged.map(s=>({url:s.url,publicId:s.publicId})), caption:$('caption').value, scheduledAt:scheduledAtISO })});
     toast('Scheduled! ✅');
     staged=[]; renderThumbs(); $('caption').value=''; $('when').value=''; loadLists();
     // Jump to the Scheduled tab so the new post is right there.
