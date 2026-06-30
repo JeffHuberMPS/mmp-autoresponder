@@ -394,7 +394,7 @@ export async function publishById(id) {
     p.postedTargets = postedTargets || null;
     p.error = partialError || null;
     await saveData(d);
-    for (const m of p.media || []) deleteImage(m.publicId);
+    // Keep the Cloudinary image so the History thumbnail still loads later.
     return { ok: true, post: p };
   } catch (e) {
     p.status = 'failed';
@@ -441,7 +441,7 @@ export async function runDuePosts() {
         p.error = partialError || null;
         ran++;
         console.log(`  📸 Auto-poster published ${p.type} (${p.media.length} photo${p.media.length > 1 ? 's' : ''})`);
-        for (const m of p.media || []) deleteImage(m.publicId);
+        // Keep the Cloudinary image so the History thumbnail still loads later.
       } catch (e) {
         p.status = 'failed';
         p.error = e.message;
