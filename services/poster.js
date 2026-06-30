@@ -328,6 +328,31 @@ export async function getAnalytics({ limit = 50, force = false } = {}) {
   return payload;
 }
 
+// Recover a History thumbnail whose stored image was cleaned up: pull the REAL
+// posted image back from Instagram and re-host it on Cloudinary so it's permanent.
+export async function recoverThumb(postId) {
+  const d = await loadData();
+  const p = (d.posts || []).find((x) => x.id === postId);
+  if (!p) throw new Error('Post not found');
+  const mediaId = (p.resultIds || [])[0];
+  if (!mediaId) throw new Error('No Instagram media linked to this post');
+  const token = config.igAccessToken;
+  // Get the real image URL from the live Instagram post (handles carousels too).
+  const info = await graphGet(`${GRAPH}/${mediaId}?fields=media_type,media_url,thumbnail_url,children{media_url,thumbnail_url}&access_token=${enc(token)}`);
+  let imgUrl = info.media_url || info.thumbnail_url;
+  if (!imgUrl && info.children?.data?.[0]) imgUrl = info.children.data[0].media_url || info.children.data[0].thumbnail_url;
+  if (!imgUrl) throw new Error('No image available from Instagram');
+  // Re-host on Cloudinary (Instagram URLs expire) so the thumbnail stays forever.
+  const imgRes = await fetch(imgUrl, { signal: AbortSignal.timeout(30000) });
+  if (!imgRes.ok) throw new Error('Could not fetch the Instagram image');
+  const buf = Buffer.from(await imgRes.arrayBuffer());
+  const up = await uploadImage(`data:image/jpeg;base64,${buf.toString('base64')}`);
+  if (!p.media || !p.media.length) p.media = [{}];
+  p.media[0].url = up.url; p.media[0].publicId = up.publicId;
+  await saveData(d);
+  return up.url;
+}
+
 export async function schedulePost({ type, media, caption, scheduledAt, targets } = {}) {
   const kind = type === 'story' ? 'story' : 'feed';
   const items = (Array.isArray(media) ? media : [media]).filter((m) => m && m.url);

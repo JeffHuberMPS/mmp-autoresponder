@@ -629,9 +629,20 @@ function gpStatus(msg, kind='work', actionLabel, action){
   }
 }
 
+// A History thumbnail failed to load (its image was cleaned up): pull the real
+// posted image back from Instagram. Falls back to a tidy placeholder if it can't.
+async function recoverPostThumb(img, id){
+  img.onerror = null;            // stop any loop
+  try{
+    const r = await api('/api/poster/recover-thumb?id='+encodeURIComponent(id));
+    if(r && r.url){ img.src = r.url; return; }
+    throw new Error('no image');
+  }catch(e){ img.classList.add('pic-gone'); img.removeAttribute('src'); }
+}
+
 function itemHTML(p, kind){
   const pic = p.media&&p.media[0]&&p.media[0].url
-    ? '<img class="pic" src="'+p.media[0].url+'" onerror="this.classList.add(\'pic-gone\');this.removeAttribute(\'src\')">'
+    ? '<img class="pic" src="'+p.media[0].url+'" onerror="recoverPostThumb(this,\''+p.id+'\')">'
     : '<div class="pic"></div>';
   const tgt = (p.targets||[p.type]).map(t=>'<span class="pill '+(t==='story'?'story':'feed')+'">'+t+'</span>').join(' ');
   const count = (p.media?p.media.length:0)+' photo'+((p.media&&p.media.length>1)?'s':'');

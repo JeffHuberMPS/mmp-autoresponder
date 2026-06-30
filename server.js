@@ -159,6 +159,10 @@ app.get('/api/poster/analytics', async (req, res) => {
   try { ok(res, await poster.getAnalytics({ limit: Number(req.query.limit) || 50, force: req.query.fresh === '1' })); }
   catch (err) { fail(res, err); }
 });
+app.get('/api/poster/recover-thumb', async (req, res) => {
+  try { ok(res, { url: await poster.recoverThumb(String(req.query.id || '')) }); }
+  catch (err) { fail(res, err, 400); }
+});
 app.post('/api/poster/cancel', async (req, res) => {
   try { ok(res, { post: await poster.cancelPost((req.body || {}).id) }); }
   catch (err) { fail(res, err, 400); }
